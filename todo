@@ -1,0 +1,21 @@
+[x] invert match
+[x] igonre 0 byte matches
+[x] tcp.kill
+[x] stats (longest/shortest match and packet/stream #)
+[ ] replace matched bytes
+[ ] write/append matched packets/streams to a file
+[ ] write matched packets/streams to a pcap file (like in py-greppcap)
+[ ] gzip/deflate/chunked support (like in jsunpack)
+[ ] smtp base64 decode
+
+[ ] testing/bugfixes
+
+
+http://stackoverflow.com/questions/10937350/how-to-check-type-of-files-without-extensions-in-python?lq=1
+http://stackoverflow.com/questions/13044562/python-mechanism-to-identify-compressed-file-type-and-uncompress
+http://stackoverflow.com/questions/43580/how-to-find-the-mime-type-of-a-file-in-python
+http://stackoverflow.com/questions/6640605/detecting-if-a-file-is-an-image-in-python?lq=1
+
+http://filemagic.readthedocs.org/en/latest/guide.html#usage
+https://github.com/ahupp/python-magic
+

@@ -1,0 +1,35 @@
+A Flowgrep-like tool for network traffic inspection.
+
+HELP:
+usage: flowsrch.py [-h] (-d --device | -p --pcap) (-R --regex | -D --dfa)
+                   [-f --filter] [- C | -S] [-i] [-v] [-m]
+                   [-T --maxinspstreams] [-U --maxinsppackets]
+                   [-B --maxinspbytes] [-t --maxdispstreams]
+                   [-u --maxdisppackets] [-b --maxdispbytes] [-k] [-V]
+
+optional arguments:
+  -h, --help           show this help message and exit
+  -d --device          listening device
+  -p --pcap            input pcap file
+  -R --regex           regex pattern to search
+  -D --dfa             dfa pattern to search (WIP)
+  -f --filter          BPF expression
+  -C                   match client stream only
+  -S                   match server stream only
+  -i                   ignore case
+  -v                   invert match
+  -m                   multiline match
+  -T --maxinspstreams  max streams to inspect
+  -U --maxinsppackets  max packets to inspect
+  -B --maxinspbytes    max bytes to inspect
+  -t --maxdispstreams  max streams to display
+  -u --maxdisppackets  max packets to display
+  -b --maxdispbytes    max bytes to display
+  -k                   kill matching TCP stream
+  -V                   show program's version number and exit
+
+EXAMPLES:
+# ./flowsrch.py -p test.pcap -R ".*"
+# ./flowsrch.py -p test.pcap -R "^GET|^POST|^HEAD|^PUT" -mCf "tcp port 80"
+# ./flowsrch.py -p test.pcap -R "PK\x03\x04" -m -S
+

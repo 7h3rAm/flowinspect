@@ -1,0 +1,18 @@
+52838
+attack
+CAN-2005-0582
+msxml1
+tcp2.oneway
+tcp2.reorder
+
+matched @ [...:...]
+               ^
+               should show the regex matched start/end offsets and not consider display length restrictions
+
+-T42 : fails (off-by-one)
+
+
+-T10
+stats show that 11 packets were processed
+
+
