@@ -32,4 +32,5 @@ EXAMPLES:
 # ./flowsrch.py -p test.pcap -R ".*"
 # ./flowsrch.py -p test.pcap -R "^GET|^POST|^HEAD|^PUT" -mCf "tcp port 80"
 # ./flowsrch.py -p test.pcap -R "PK\x03\x04" -m -S
+# ./flowsrch.py -p test.pcap -R "GET .*" -b32 -f "not port http"
 

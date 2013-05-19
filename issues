@@ -1,18 +1,7 @@
-52838
-attack
-CAN-2005-0582
-msxml1
-tcp2.oneway
-tcp2.reorder
-
-matched @ [...:...]
-               ^
-               should show the regex matched start/end offsets and not consider display length restrictions
-
--T42 : fails (off-by-one)
-
-
--T10
-stats show that 11 packets were processed
-
+[x] matched @ [...:...]
+                    ^ should show the regex matched start/end offsets and not consider display length restrictions.
+[x] -T42 : fails (off-by-one)
+[ ] hexdump shows excessive 00 bytes in the cts trailer (get written to file as well)
+[ ] For some pcaps nids does not set endstate. process them by manually iterating the tcp callback.
+[ ] skipped/matched counts are off-by-one when in hexdump outmode
 

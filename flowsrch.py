@@ -13,6 +13,7 @@ except ImportError, ex:
 version = "0.1"									# flowsrch version
 reflags = 0									# regex match flags
 matched = 0									# generic matched flag
+logdir = ""									# directory to log matched content
 openstreams = []								# list of open streams
 udpdone = tcpdone = 0								# max packet/stream inspection flags
 packetct = streamct = 0								# packet/stream counters
@@ -21,11 +22,17 @@ maxinsppackets = maxinspstreams = maxinspbytes = 0				# max inspection counters
 maxdisppackets = maxdispstreams = maxdispbytes = 0				# max display counters
 shortestmatch = {'u':0, 't':0, 'U':0, 'T':0}					# shortest display/inspection match counters
 longestmatch = {'u':0, 't':0, 'U':0, 'T':0}					# longest display/inspection match counters
-flags = {'d':0, 'p':1, 'R':0, 'D':1, 'v':0, 'C':1, 'S':1, 'k':0, 'w':0}		# cmdline args dictionary
+flags = {'d':0, 'p':0, 'R':0, 'D':0, 'v':0, 'C':0, 'S':0, \
+	 'k':0, 'w':0, 'q':0, 'm':0, 'h':0, 'a':0, 'r':0}			# cmdline args dictionary
 
+def printable(src):
+	print ''.join([ch for ch in src if ord(ch) > 31 and ord(ch) < 126 or ord(ch) == 9 or ord(ch) == 10 or ord(ch) == 13 or ord(ch) == 20])
+	print
+
+# raw bytes to hexdump filter
 def hexdump(src, length=16, sep='.'):
-	FILTER = ''.join([(len(repr(chr(x))) == 3) and chr(x) or sep for x in range(256)])
 	lines = []
+	FILTER = ''.join([(len(repr(chr(x))) == 3) and chr(x) or sep for x in range(256)])
 	for c in xrange(0, len(src), length):
 		chars = src[c:c+length]
 		hex = ' '.join(["%02x" % ord(x) for x in chars])
@@ -49,7 +56,7 @@ def handleudp(addrs, payload, pkt):
         packetct += 1								# increment packet counter
 	timestamp = nids.get_pkt_ts()
 
-	if maxinspbytes != 0:							# if max inspection depth is non-zero
+	if maxinspbytes > 0:							# if max inspection depth is non-zero
 		finalpayload = payload[:maxinspbytes]				# extract depth bytes from payload
 	else:
 		finalpayload = payload						# else extract all bytes from payload
@@ -98,14 +105,22 @@ def showudpmatch(timestamp, addrs, payload, start, end):
 		longestmatch['U'] = udpmatches
 
 	if maxdispbytes == 0 or count <= maxdispbytes:				# tune display limits
-		end = end
+		dispend = end
 	else:
-		end = start+maxdispbytes
+		dispend = start+maxdispbytes
 
-	print
-	print "[U] (%d/%d/%d) %s: %s:%s > %s:%s" % (udpmatches, packetct, maxinsppackets, str(timestamp), src, sport, dst, dport),
-	print "(matched @ [%d:%d] - %dB)" % (start, end, count)
-	hexdump(payload[start:end])
+	if flags['w']: writetofile(timestamp, src, sport, dst, dport, payload, "udp")
+
+	if flags['q']: return
+
+	if flags['m']: print "[U] (%d/%d/%d) %s: %s:%s > %s:%s (matched @ [%d:%d] - %dB)" % \
+		(udpmatches, packetct, maxinsppackets, str(timestamp), src, sport, dst, dport, start, end, count)
+
+	if flags['r']: print("%s\n" % payload[start:dispend])
+
+	if flags['a']: printable(payload[start:dispend])
+
+	if flags['h']: hexdump(payload[start:dispend])
 
 # tcp callback handler
 def handletcp(tcp):
@@ -113,10 +128,15 @@ def handletcp(tcp):
 	matched = 0
 	data = finalpayload = timestamp = ""
 
-	if maxinspstreams != 0 and streamct > maxinspstreams:	# if max stream inspection count is non-zero
+	if tcpdone:								# if max stream inspection count is reached
+		donetcpudp()							# check if we can exit
+		return								# else return
+
+	if maxinspstreams != 0 and streamct > maxinspstreams:			# if max stream inspection count is non-zero
+		streamct = maxinspstreams					# adjust inspected stream count
 		tcpdone = 1							# and we have reached that limit
 		donetcpudp()							# set flag and return
-		return 
+		return
 
 	endstates = (nids.NIDS_CLOSE, nids.NIDS_TIMED_OUT, nids.NIDS_RESET)	# possible stream termination states
 
@@ -176,7 +196,7 @@ def handletcp(tcp):
 
 # show tcp stream details and match stats
 def showtcpmatch(timestamp, addrs, payload, start, end):
-	global streamct, maxinspstreams, maxinspbytes, tcpmatches, maxdispstreams
+	global streamct, maxinspstreams, maxinspbytes, tcpmatches, maxdispstreams, flags
 	((src,sport), (dst,dport)) = addrs
 
 	count = end - start
@@ -204,14 +224,89 @@ def showtcpmatch(timestamp, addrs, payload, start, end):
 		longestmatch['T'] = tcpmatches
 
 	if maxdispbytes == 0 or count <= maxdispbytes:				# tune display limits
-		end = end
+		dispend = end
 	else:
-		end = start+maxdispbytes
+		dispend = start+maxdispbytes
+
+	if flags['w']: writetofile(timestamp, src, sport, dst, dport, payload, "tcp")
+
+	if flags['q']: return
+
+	if flags['m']: print "[T] (%d/%d/%d) %s: %s:%s > %s:%s (matched @ [%d:%d] - %dB)" % \
+		(tcpmatches, streamct, maxinspstreams, str(timestamp), src, sport, dst, dport, start, end, count)
+
+	if flags['r']: print("%s\n" % payload[start:dispend])
+
+	if flags['a']: printable(payload[start:dispend])
+
+	if flags['h']: hexdump(payload[start:dispend])
+
+# ip callback handler
+def handleip(pkt):
+	timestamp = nids.get_pkt_ts()
+
+# logs payload to a dir/file
+def writetofile(timestamp, src, sport, dst, dport, payload, proto):
+	global logdir
+
+	try:
+		if not os.path.isdir(logdir):
+			os.makedirs(logdir)
+	except OSError, oserr: print "[!] OSError: %s" % oserr
+
+	filename = "%s/%s-%s.%s-%s.%s-%s" % (logdir, str(timestamp).translate(None, '.'), src, sport, dst, dport, proto)
+
+	try:
+		file = open(filename, 'ab+')
+		file.write(payload)
+	except IOError, io: print "[!] IOError: %s" % io
+
+# shows arguments stats
+def dumpargsstats(args):
+	global flags, maxinsppackets, maxinspstreams, maxinspbytes, maxdisppackets, maxdispstreams, maxdispbytes, logdir
+
+	if flags['p']:
+		print "%-30s" % "[+] Input pcap:", ; print "[ %s ]" % (args.pcap)
+	elif flags['d']:
+		print "%-30s" % "[+] Listening device:", ;print "[ \"%s\" ]" % (args.device),
+		if flags['k']: print "[ w/ \"killtcp\" ]"
+		else: print
+
+	if args.filter:
+		print "%-30s" % "[+] BPF expression:", ; print "[ \"%s\" ]" % (args.filter)
+
+	if flags['R']:
+		print "%-30s" % "[+] RegEx pattern:", ; print "[ \"%s\" ]" % (args.regex)
+		print "%-30s" % "[+] RegEx flags:", ; print "[",
+		if args.igncase: print "ignorecase",
+		if args.invmatch: print "invertmatch",
+		if args.multiline: print "multiline",
+		print "]"
+	elif flags['D']:
+		print "[-] DFA match is incomplete. Please use RegEx instead."
+		exitwithstats()
+
+	print "%-30s" % "[+] TCP Inspection Direction:", ; print "[",
+	if flags['C']: print "CTS",
+	if flags['S']: print "STC",
+	print "]"
+
+	print "%-30s" % "[+] Inspection limits:",
+	print "[ Streams: %d | Packets: %d | Bytes: %d ]" % (maxinspstreams, maxinsppackets, maxinspbytes)
+	print "%-30s" % "[+] Display limits:",
+	print "[ Streams: %d | Packets: %d | Bytes: %d ]" % (maxdispstreams, maxdisppackets, maxdispbytes)
+
+	print "%-30s" % "[+] Output modes:", ; print "[",
+	if flags['q']: print "quite"
+	else:
+		if flags['w']: print "write: %s" % logdir,
+		if flags['m']: print "meta",
+		if flags['h']: print "hex",
+		if flags['a']: print "ascii",
+		if flags['r']: print "raw",
+	print "]"
 
 	print
-	print "[T] (%d/%d/%d) %s: %s:%s > %s:%s" % (tcpmatches, streamct, maxinspstreams, str(timestamp), src, sport, dst, dport),
-	print "(matched @ [%d:%d] - %dB)" % (start, end, count)
-	hexdump(payload[start:end])
 
 # done parsing max packets/streams
 def donetcpudp():
@@ -219,10 +314,6 @@ def donetcpudp():
 
 	if tcpdone and udpdone:							# if we're done isnpecting max streams and packets
 		exitwithstats()							# display stats and exit
-
-# ip callback handler
-def handleip(pkt):
-	timestamp = nids.get_pkt_ts()
 
 # keyboard interrupt handler / exit stats display routine
 def exitwithstats():
@@ -245,7 +336,7 @@ def exitwithstats():
 
 # main routine
 def main():
-	global version, reflags, udpregex, tcpregex, openstreams, maxinsppackets, maxinspstreams, maxinspbytes, maxdisppackets, maxdispstreams, maxdispbytes, packetct, streamct, flags
+	global version, reflags, udpregex, tcpregex, openstreams, maxinsppackets, maxinspstreams, maxinspbytes, maxdisppackets, maxdispstreams, maxdispbytes, packetct, streamct, flags, logdir
 
 	parser = argparse.ArgumentParser()
 
@@ -267,21 +358,25 @@ def main():
 	parser.add_argument('-v', dest="invmatch", default=False, action="store_true", required=False, help="invert match")
 	parser.add_argument('-m', dest="multiline", default=False, action="store_true", required=False, help="multiline match")
 
-	parser.add_argument('-T', metavar="--maxinspstreams", dest="maxinspstreams", default=0, action="store", required=False, help="max streams to inspect")
-	parser.add_argument('-U', metavar="--maxinsppackets", dest="maxinsppackets", default=0, action="store", required=False, help="max packets to inspect")
-	parser.add_argument('-B', metavar="--maxinspbytes", dest="maxinspbytes", default=0, action="store", required=False, help="max bytes to inspect")
+	parser.add_argument('-T', metavar="--maxinspstreams", dest="maxinspstreams", default=0, action="store", type=int, required=False, help="max streams to inspect")
+	parser.add_argument('-U', metavar="--maxinsppackets", dest="maxinsppackets", default=0, action="store", type=int, required=False, help="max packets to inspect")
+	parser.add_argument('-B', metavar="--maxinspbytes", dest="maxinspbytes", default=0, action="store", type=int, required=False, help="max bytes to inspect")
 
-	parser.add_argument('-t', metavar="--maxdispstreams", dest="maxdispstreams", default=0, action="store", required=False, help="max streams to display")
-	parser.add_argument('-u', metavar="--maxdisppackets", dest="maxdisppackets", default=0, action="store", required=False, help="max packets to display")
-	parser.add_argument('-b', metavar="--maxdispbytes", dest="maxdispbytes", default=0, action="store", required=False, help="max bytes to display")
+	parser.add_argument('-t', metavar="--maxdispstreams", dest="maxdispstreams", default=0, action="store", type=int, required=False, help="max streams to display")
+	parser.add_argument('-u', metavar="--maxdisppackets", dest="maxdisppackets", default=0, action="store", type=int, required=False, help="max packets to display")
+	parser.add_argument('-b', metavar="--maxdispbytes", dest="maxdispbytes", default=0, action="store", type=int, required=False, help="max bytes to display")
 
 	parser.add_argument('-k', dest="killtcp", default=False, action="store_true", required=False, help="kill matching TCP stream")
+
+	parser.add_argument('-w', metavar="logdir", dest="writebytes", default="", action="store", required=False, nargs='?', help="write matching packets/streams")
+
+	parser.add_argument('-o', dest="outmode", choices=('quite', 'meta', 'hex', 'ascii', 'raw'), action="append",  default=[], required=False, help="match output mode")
 
 	parser.add_argument('-V', action='version', version='%(prog)s 0.1')
 
 	args = parser.parse_args()
 
-	print "%s v%s - Search Packets/Flows using DFA/RegEx" % (os.path.basename(sys.argv[0]), version)
+	print "%s v%s - Search Packets/Flows using RegEx/DFA" % (os.path.basename(sys.argv[0]), version)
 	print "Juniper Networks - Security Research Group"
 	print
 
@@ -292,90 +387,80 @@ def main():
 		flags['p'] = 1							# enable pcap inspection
 		flags['d'] = 0							# disable live device inspection
 		nids.param("filename", args.pcap)				# set NIDS filename parameter with input pcap
-		print "[+] Input pcap: \"%s\"" % (args.pcap)
 	elif args.device != "":
 		flags['d'] = 1							# enable live device inspection
 		flags['p'] = 0							# disable pcap inspection
 		nids.param("device", args.device)				# set NIDS device parameter with device name
-		print "[+] Listening device: \"%s\"" % (args.device)
 
 	if args.filter != "":
 		nids.param("pcap_filter", args.filter)				# set NIDS filter parameter with input BPF expression
-		print "[+] Applied BPF expression: \"%s\"" % (args.filter)
 
 	if args.regex != "":
 		flags['R'] = 1							# enable regex based inspection
 		flags['D'] = 0							# disable DFA based inspection
-		print "[+] Enabled RegEx match for pattern: \"%s\"" % (args.regex)
 	elif args.dfa != "":
 		flags['D'] = 1							# enable DFA based inspection
 		flags['R'] = 0							# disable regex based inspection
-		print "[+] Enabled DFA match for pattern: \"%s\"" % (args.dfa)
 
 	if args.igncase == True:
 		reflags |= re.IGNORECASE					# enable case insensitive regex match flag
-		print "[+] Enabled case insensitive match"
 
 	if args.invmatch == True:
 		flags['v'] = 1							# enable invert match inspection
-		print "[+] Enabled invert match"
 
 	if args.multiline == True:
 		reflags |= re.MULTILINE						# enable multiline regex match flag
 		reflags |= re.DOTALL						# enable dotall regex match flag (dot matches newline)
-		print "[+] Enabled multiline match (dot will now match newline as well)"
 
 	if args.cts == True:
 		flags['C'] = 1							# enable CTS inspection
 		flags['S'] = 0							# disable STC inspection
-		print "[+] Enabled inspection on CTS stream only"
 	elif args.stc == True:
 		flags['S'] = 1							# enable STC inspection
 		flags['C'] = 0							# enable CTS inspection
-		print "[+] Enabled inspection on STC stream only"
 	else:
 		flags['C'] = 1							# default, enable both CTS
 		flags['S'] = 1							# and STC inspection
-		print "[+] Enabled inspection on both CTS-STC streams"
 
-	if args.killtcp == True:
-		if flags['p']:
-			print "[!] Cannot enable \"killtcp\" while reading pcaps"
-		elif flags['d']:
-			flags['k'] = 1
-			print "[+] Enabled \"killtcp\" for matched stream"
+	if args.killtcp == True:						# if tcp stream teardown is requested
+		if flags['d']:							# and we'll be inspecting on a live network
+			flags['k'] = 1						# enable killtcp
 
 	if args.maxinspstreams:							# if max stream inspection limit is provided,
 		maxinspstreams = int(args.maxinspstreams)			# enable limit
-	else:
-		maxinspstreams = 0						# else keep limit uncapped
 
 	if args.maxinsppackets:							# if max packet inspection limit is provided,
 		maxinsppackets = int(args.maxinsppackets)			# enable limit
-	else:
-		maxinsppackets = 0						# else keep limit uncapped
 
 	if args.maxinspbytes:							# if max inspection depth is provided,
 		maxinspbytes = int(args.maxinspbytes)				# enable depth
-	else:
-		maxinspbytes = 0						# else keep limit uncapped
-	print "[+] Max inspection limits: [ Streams (-T): %d | Packets (-U): %d | Bytes (-B): %d ]" % (maxinspstreams, maxinsppackets, maxinspbytes)
 
 	if args.maxdispstreams:							# if max stream display limit is provided,
 		maxdispstreams = int(args.maxdispstreams)			# enable limit
-	else:
-		maxdispstreams = 0						# else keep limit uncapped
 
 	if args.maxdisppackets:							# if max packet display limit is provided,
 		maxdisppackets = int(args.maxdisppackets)			# enable limit
-	else:
-		maxdisppackets = 0						# else keep limit uncapped
 
 	if args.maxdispbytes:							# if max display depth is provided,
 		maxdispbytes = int(args.maxdispbytes)				# enable depth
+
+	if args.writebytes != "":
+		flags['w'] = 1
+		if args.writebytes != None:
+			logdir = args.writebytes
+		else:
+			logdir = "."
+
+	if not args.outmode:
+		flags['m'] = 1
+		flags['h'] = 1
 	else:
-		maxdispbytes = 0						# else keep limit uncapped
-	print "[+] Max display limits: [ Streams (-t): %d | Packets (-u): %d | Bytes (-b): %d ]" % (maxdispstreams, maxdisppackets, maxdispbytes)
+		for mode in args.outmode:
+			if mode == "quite": flags['q'] = 1
+			elif mode == "meta": flags['m'] = 1
+			elif mode == "hex": flags['h'] = 1
+			elif mode == "ascii": flags['a'] = 1
+			elif mode == "raw": flags['r'] = 1
 
 	try:
 		if flags['R']:
@@ -385,25 +470,23 @@ def main():
 				reflags |= re.DOTALL
 			udpregex = re.compile(args.regex, reflags)		# compile and generate a regex object for udp matches
 		elif flags['D']:
-			print "[!] DFA matching logic has not been implemented (yet). Please use regex patterns instead."
-			print "[-] Failed to initialize DFA search. Exiting."
-			sys.exit(1)
+			print "[-] DFA match is incomplete. Please use RegEx instead."
+			exitwithstats()
+
+		dumpargsstats(args)						# show current arguments stats
 
 		nids.init()							# initialize NIDS
 		nids.register_ip(handleip)					# register ip callback handler
 		nids.register_udp(handleudp)					# register udp callback handler
 		nids.register_tcp(handletcp)					# register tcp callback handler
-		print "[+] UDP/TCP/IP callback handlers registered"
 
-		print "[+] Ready, press any key to continue...",
+		print "[+] Callback handlers registered. Press any key to continue...",
 		try: input()
 		except: pass
 
-		print "[+] NIDS initialized, waiting for events..."
-		try:
-			nids.run()						# invoke NIDS handler
-		except KeyboardInterrupt:
-			exitwithstats()
+		print "[+] NIDS initialized, waiting for events..." ; print
+		try: nids.run()							# invoke NIDS handler
+		except KeyboardInterrupt: exitwithstats()
 
 	except nids.error, nx:
 		print

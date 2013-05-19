@@ -2,4 +2,6 @@
 *.swp
 *.pcap
 *.py[cod]
+*tcp
+*udp
 
