@@ -18,7 +18,6 @@ openstreams = []								# list of open streams
 udpdone = tcpdone = 0								# max packet/stream inspection flags
 packetct = streamct = 0								# packet/stream counters
 udpmatches = tcpmatches = 0							# udp/tcp match counters
-udpunmatched = tcpunmatched = 0							# udp/tcp unmatched counters
 cregexes = sregexes = aregexes = []						# list of compiled regex objects
 maxinsppackets = maxinspstreams = maxinspbytes = 0				# max inspection counters
 maxdisppackets = maxdispstreams = maxdispbytes = 0				# max display counters
@@ -65,45 +64,46 @@ def handleudp(addrs, payload, pkt):
 
 	if not matched:
 		for regexobj in cregexes:
-			for match in regexobj.finditer(finalpayload):				# match regex and generate iterable match object
+			for match in regexobj.finditer(finalpayload):		# match regex and generate iterable match object
 				matched = 1
-				if not flags['v']:						# if invert match is not requested (direct match)
-					start = match.start()					# find starting offset of matched bytes
-					end = match.end()					# find ending offset of matched bytes
-					udpmatches += 1						# increment udp match counter
-					showudpmatch(timestamp, addrs, finalpayload, start, end)
+				if not flags['v']:				# if invert match is not requested (direct match)
+					start = match.start()			# find starting offset of matched bytes
+					end = match.end()			# find ending offset of matched bytes
+					udpmatches += 1				# increment udp match counter
+					showudpmatch(timestamp, addrs, finalpayload, start, end, regexobj)
 			if matched: break
 
 	if not matched:
 		for regexobj in sregexes:
-			for match in regexobj.finditer(finalpayload):				# match regex and generate iterable match object
+			for match in regexobj.finditer(finalpayload):		# match regex and generate iterable match object
 				matched = 1
-				if not flags['v']:						# if invert match is not requested (direct match)
-					start = match.start()					# find starting offset of matched bytes
-					end = match.end()					# find ending offset of matched bytes
-					udpmatches += 1						# increment udp match counter
-					showudpmatch(timestamp, addrs, finalpayload, start, end)
+				if not flags['v']:				# if invert match is not requested (direct match)
+					start = match.start()			# find starting offset of matched bytes
+					end = match.end()			# find ending offset of matched bytes
+					udpmatches += 1				# increment udp match counter
+					showudpmatch(timestamp, addrs, finalpayload, start, end, regexobj)
 			if matched: break
 
 	if not matched:
 		for regexobj in aregexes:
-			for match in regexobj.finditer(finalpayload):				# match regex and generate iterable match object
+			for match in regexobj.finditer(finalpayload):		# match regex and generate iterable match object
 				matched = 1
-				if not flags['v']:						# if invert match is not requested (direct match)
-					start = match.start()					# find starting offset of matched bytes
-					end = match.end()					# find ending offset of matched bytes
-					udpmatches += 1						# increment udp match counter
-					showudpmatch(timestamp, addrs, finalpayload, start, end)
+				if not flags['v']:				# if invert match is not requested (direct match)
+					start = match.start()			# find starting offset of matched bytes
+					end = match.end()			# find ending offset of matched bytes
+					udpmatches += 1				# increment udp match counter
+					showudpmatch(timestamp, addrs, finalpayload, start, end, regexobj)
 			if matched: break
 
-	if not matched and flags['v']:						# packet did not match and invert match is requested
-		start = 0							# point to the start of the payload
-		end = len(finalpayload)						# should dump all of teh payload coz we don't have match offsets
-		udpmatches += 1							# increment udp match counter
-		showudpmatch(timestamp, addrs, finalpayload, start, end)
+	if not matched:								# packet did not match
+		if flags['v']:							# and invert match is requested
+			start = 0						# point to the start of the payload
+			end = len(finalpayload)					# should dump all of teh payload coz we don't have match offsets
+			udpmatches += 1						# increment udp match counter
+			showudpmatch(timestamp, addrs, finalpayload, start, end, None)
 
 # show udp packet details and match stats
-def showudpmatch(timestamp, addrs, payload, start, end):
+def showudpmatch(timestamp, addrs, payload, start, end, regexobj):
 	global packetct, maxinsppackets, maxinspbytes, udpmatches, maxdisppackets, shortestmatch, longestmatch
 	((src,sport), (dst,dport)) = addrs
 
@@ -140,8 +140,8 @@ def showudpmatch(timestamp, addrs, payload, start, end):
 
 	if flags['q']: return
 
-	if flags['m']: print "[U] (%d/%d/%d) %s: %s:%s > %s:%s (matched @ [%d:%d] - %dB)" % \
-		(udpmatches, packetct, maxinsppackets, str(timestamp), src, sport, dst, dport, start, end, count)
+	if flags['m']: print "[U] (%d/%d/%d) %s: %s:%s > %s:%s (matched \"%s\" @ [%d:%d] - %dB)" % \
+		(udpmatches, packetct, maxinsppackets, str(timestamp), src, sport, dst, dport, str(regexobj), start, end, count)
 
 	if flags['r']: print("%s\n" % payload[start:dispend])
 
@@ -256,8 +256,7 @@ def handletcp(tcp):
 
 	elif tcp.nids_state in endstates:                                       # if a stream is closed, reset, or timed out
 		if tcp.addr in openstreams:					# no match for this stream,
-			openstreams.remove(tcp.addr)				# remove it please
-			tcpunmatched += 1					# increment unmatched count
+			openstreams.remove(tcp.addr)				# stop tracking it please
 		timestamp = nids.get_pkt_ts()					# read timestamp
 
 	else:
@@ -376,16 +375,16 @@ def donetcpudp():
 
 # keyboard interrupt handler / exit stats display routine
 def exitwithstats():
-	global packetct, udpmatches, streamct, tcpmatches, shortestmatch, longestmatch, openstreams, udpunmatched, tcpunmatched
+	global packetct, udpmatches, streamct, tcpmatches, shortestmatch, longestmatch, openstreams
 
 	print
 	if packetct >= 0:
-		print "[U] Processed: %d | Unmatched: %d | Matches: %d | Shortest: %dB (#%d) | Longest: %dB (#%d)" % \
-		(packetct, udpunmatched, udpmatches, shortestmatch['u'], shortestmatch['U'], longestmatch['u'], longestmatch['U'])
+		print "[U] Processed: %d | Matches: %d | Shortest: %dB (#%d) | Longest: %dB (#%d)" % \
+		(packetct, udpmatches, shortestmatch['u'], shortestmatch['U'], longestmatch['u'], longestmatch['U'])
 
 	if streamct >= 0:
-		print "[T] Processed: %d | Unmatched: %d | Matches: %d | Shortest: %dB (#%d) | Longest: %dB (#%d)" % \
-		(streamct, udpunmatched, tcpmatches, shortestmatch['t'], shortestmatch['T'], longestmatch['t'], longestmatch['T'])
+		print "[T] Processed: %d | Matches: %d | Shortest: %dB (#%d) | Longest: %dB (#%d)" % \
+		(streamct, tcpmatches, shortestmatch['t'], shortestmatch['T'], longestmatch['t'], longestmatch['T'])
 
 	if len(openstreams) > 0:
 		print "[!] Skipped streams: %d (tcp.state did not match endstates)" % len(openstreams)
@@ -516,6 +515,11 @@ def main():
 			aregexes = []
 			for a in args.ares:
 				aregexes.append(re.compile(a, reflags))
+
+		if not cregexes and not sregexes and not aregexes:
+			print "[-] Need a regex expression."
+			print "[-] Use direction flags [CSA] to specify one."
+			sys.exit(1)
 
 		dumpargsstats(args)						# show current arguments stats
 
