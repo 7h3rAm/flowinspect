@@ -2,24 +2,11 @@
 [x] igonre 0 byte matches
 [x] tcp.kill
 [x] stats (longest/shortest match and packet/stream #)
-[ ] support for different cts, stc and any patterns
-[ ] support for multiple patterns
+[x] support for different cts, stc and any patterns
+[x] support for multiple patterns
 [x] out modes: quite, meta, hex, ascii, raw (+write)
 [x] write/append matched packets/streams to a file
 [ ] write matched packets/streams to a pcap file (like in py-greppcap)
-[ ] http content encoding (gzip/deflate/chunked)
+[ ] http content-encoding: gzip/deflate/compress / http transfer encoding: chunked
 [ ] smtp content encoding (base64/mime)
-
-[ ] testing/bugfixes
-
-
-Refs:
------
-http://stackoverflow.com/questions/10937350/how-to-check-type-of-files-without-extensions-in-python?lq=1
-http://stackoverflow.com/questions/13044562/python-mechanism-to-identify-compressed-file-type-and-uncompress
-http://stackoverflow.com/questions/43580/how-to-find-the-mime-type-of-a-file-in-python
-http://stackoverflow.com/questions/6640605/detecting-if-a-file-is-an-image-in-python?lq=1
-
-http://filemagic.readthedocs.org/en/latest/guide.html#usage
-https://github.com/ahupp/python-magic
 
