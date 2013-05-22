@@ -1,6 +1,6 @@
 #!/usr/bin/env python2 
 
-import os, sys, argparse, re
+import os, sys, argparse, re, pickle
 
 # try importing NIDS; exit on error
 try:
@@ -70,7 +70,9 @@ def handleudp(addrs, payload, pkt):
 					start = match.start()			# find starting offset of matched bytes
 					end = match.end()			# find ending offset of matched bytes
 					udpmatches += 1				# increment udp match counter
-					showudpmatch(timestamp, addrs, finalpayload, start, end, regexobj)
+					dumps = pickle.dumps(regexobj)
+					reexpr = re.search("\n\(S'(.*)'\n", dumps).group(1)
+					showudpmatch(timestamp, addrs, finalpayload, start, end, reexpr)
 			if matched: break
 
 	if not matched:
@@ -81,7 +83,9 @@ def handleudp(addrs, payload, pkt):
 					start = match.start()			# find starting offset of matched bytes
 					end = match.end()			# find ending offset of matched bytes
 					udpmatches += 1				# increment udp match counter
-					showudpmatch(timestamp, addrs, finalpayload, start, end, regexobj)
+					dumps = pickle.dumps(regexobj)
+					reexpr = re.search("\n\(S'(.*)'\n", dumps).group(1)
+					showudpmatch(timestamp, addrs, finalpayload, start, end, reexpr)
 			if matched: break
 
 	if not matched:
@@ -92,7 +96,9 @@ def handleudp(addrs, payload, pkt):
 					start = match.start()			# find starting offset of matched bytes
 					end = match.end()			# find ending offset of matched bytes
 					udpmatches += 1				# increment udp match counter
-					showudpmatch(timestamp, addrs, finalpayload, start, end, regexobj)
+					dumps = pickle.dumps(regexobj)
+					reexpr = re.search("\n\(S'(.*)'\n", dumps).group(1)
+					showudpmatch(timestamp, addrs, finalpayload, start, end, reexpr)
 			if matched: break
 
 	if not matched:								# packet did not match
@@ -103,7 +109,7 @@ def handleudp(addrs, payload, pkt):
 			showudpmatch(timestamp, addrs, finalpayload, start, end, None)
 
 # show udp packet details and match stats
-def showudpmatch(timestamp, addrs, payload, start, end, regexobj):
+def showudpmatch(timestamp, addrs, payload, start, end, reexpr):
 	global packetct, maxinsppackets, maxinspbytes, udpmatches, maxdisppackets, shortestmatch, longestmatch
 	((src,sport), (dst,dport)) = addrs
 
@@ -141,7 +147,7 @@ def showudpmatch(timestamp, addrs, payload, start, end, regexobj):
 	if flags['q']: return
 
 	if flags['m']: print "[U] (%d/%d/%d) %s: %s:%s > %s:%s (matched \"%s\" @ [%d:%d] - %dB)" % \
-		(udpmatches, packetct, maxinsppackets, str(timestamp), src, sport, dst, dport, str(regexobj), start, end, count)
+		(udpmatches, packetct, maxinsppackets, str(timestamp), src, sport, dst, dport, reexpr, start, end, count)
 
 	if flags['r']: print("%s\n" % payload[start:dispend])
 
@@ -176,7 +182,7 @@ def handletcp(tcp):
 		if flags['S']:							# and STC stream has to be inspected
 			tcp.client.collect = 1					# mark it for data collection
 
-		if tcp.addr not in openstreams:					# if not already tracking (nids will take care of it, but still good to have a precheck)
+		if tcp.addr not in openstreams:					# if not already tracking
 			openstreams.append(tcp.addr)				# start tracking this stream
 			streamct += 1						# increment stream counter
 
@@ -204,7 +210,9 @@ def handletcp(tcp):
 	 					start = match.start()		# find starting offset of matched bytes
 						end = match.end()		# find ending offset of matched bytes
 						tcpmatches += 1			# increment tcp match counter
-						showtcpmatch(timestamp, tcp.addr, afinalpayload, start, end, regexobj, "ANY")
+						dumps = pickle.dumps(regexobj)
+						reexpr = re.search("\n\(S'(.*)'\n", dumps).group(1)
+						showtcpmatch(timestamp, tcp.addr, afinalpayload, start, end, reexpr, "ANY")
 				if matched:
 					if flags['k']:
 						tcp.kill
@@ -220,7 +228,9 @@ def handletcp(tcp):
 						start = match.start()		# find starting offset of matched bytes
 						end = match.end()		# find ending offset of matched bytes
 						tcpmatches += 1			# increment tcp match counter
-						showtcpmatch(timestamp, tcp.addr, cfinalpayload, start, end, regexobj, "CTS")
+						dumps = pickle.dumps(regexobj)
+						reexpr = re.search("\n\(S'(.*)'\n", dumps).group(1)
+						showtcpmatch(timestamp, tcp.addr, cfinalpayload, start, end, reexpr, "CTS")
 				if matched:
 					if flags['k']:
 						tcp.kill
@@ -236,7 +246,9 @@ def handletcp(tcp):
 						start = match.start()		# find starting offset of matched bytes
 						end = match.end()		# find ending offset of matched bytes
 						tcpmatches += 1			# increment tcp match counter
-						showtcpmatch(timestamp, tcp.addr, sfinalpayload, start, end, regexobj, "STC")
+						dumps = pickle.dumps(regexobj)
+						reexpr = re.search("\n\(S'(.*)'\n", dumps).group(1)
+						showtcpmatch(timestamp, tcp.addr, sfinalpayload, start, end, reexpr, "STC")
 				if matched:
 					if flags['k']:
 						tcp.kill
@@ -263,7 +275,7 @@ def handletcp(tcp):
 		print >>sys.stderr, "[!] Unknown NIDS state: %s" % (tcp.nids_state)
 
 # show tcp stream details and match stats
-def showtcpmatch(timestamp, addrs, payload, start, end, regexobj, dir):
+def showtcpmatch(timestamp, addrs, payload, start, end, reexpr, dir):
 	global streamct, maxinspstreams, maxinspbytes, tcpmatches, maxdispstreams, flags
 	((src,sport), (dst,dport)) = addrs
 
@@ -301,7 +313,7 @@ def showtcpmatch(timestamp, addrs, payload, start, end, regexobj, dir):
 	if flags['q']: return
 
 	if flags['m']: print "[T] (%d/%d/%d) %s: %s:%s > %s:%s (matched \"%s\" on %s @ [%d:%d] - %dB)" % \
-		(tcpmatches, streamct, maxinspstreams, str(timestamp), src, sport, dst, dport, str(regexobj), dir, start, end, count)
+		(tcpmatches, streamct, maxinspstreams, str(timestamp), src, sport, dst, dport, reexpr, dir, start, end, count)
 
 	if flags['r']: print("%s\n" % payload[start:dispend])
 
@@ -540,10 +552,10 @@ def main():
 		print
 		print "[-] NIDS error: %s" % nx
 		sys.exit(1)
-#	except Exception, ex:
-#		print
-#		print "[-] Exception: %s" % ex
-#		sys.exit(1)
+	except Exception, ex:
+		print
+		print "[-] Exception: %s" % ex
+		sys.exit(1)
 
 	exitwithstats()
 
