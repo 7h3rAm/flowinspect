@@ -10,5 +10,3 @@
 [ ] http content-encoding: gzip/deflate/compress / http transfer encoding: chunked
 [ ] smtp content encoding (base64/mime)
 
-[ ] testing/bugfixes
-
