@@ -5,8 +5,7 @@ import os, sys, argparse, re
 sys.dont_write_bytecode = True
 from utils import *
 
-try:                                                                            # try importing NIDS; exit on error
-	import nids
+try: import nids								# try importing NIDS; exit on error
 except ImportError, ex:
 	print "[-] Import failed: %s" % (ex)
 	sys.exit(1)
@@ -15,13 +14,15 @@ except ImportError, ex:
 # globals
 version = "0.1"									# flowsrch version
 reflags = 0									# regex match flags
-matched = 0									# generic matched flag
 logdir = ""									# directory to log matched content
+cregexes = []
+sregexes = []									# list of compiled regex objects
 openstreams = []								# list of open streams
+cmatchedstrs = {}
+smatchedstrs = {}								# dictinaries for client/server matched streams
 udpdone = tcpdone = 0								# max packet/stream inspection flags
 packetct = streamct = 0								# packet/stream counters
 udpmatches = tcpmatches = 0							# udp/tcp match counters
-cregexes = sregexes = aregexes = []						# list of compiled regex objects
 maxinsppackets = maxinspstreams = maxinspbytes = 0				# max inspection counters
 maxdisppackets = maxdispstreams = maxdispbytes = 0				# max display counters
 shortestmatch = {'u':0, 't':0, 'U':0, 'T':0}					# shortest display/inspection match counters
@@ -49,19 +50,10 @@ def handleudp(addrs, payload, pkt):
 	else:
 		finalpayload = payload						# else extract all bytes from payload
 
-	if not matched:
-		for regexobj in cregexes:
-			for match in regexobj.finditer(finalpayload):		# match regex and generate iterable match object
-				matched = 1
-				if not flags['v']:				# if invert match is not requested (direct match)
-					start = match.start()			# find starting offset of matched bytes
-					end = match.end()			# find ending offset of matched bytes
-					udpmatches += 1				# increment udp match counter
-					showudpmatch(timestamp, addrs, finalpayload, start, end, getregexpattern(regexobj))
-			if matched: break
+	fregexes = cregexes + sregexes
 
 	if not matched:
-		for regexobj in sregexes:
+		for regexobj in fregexes:
 			for match in regexobj.finditer(finalpayload):		# match regex and generate iterable match object
 				matched = 1
 				if not flags['v']:				# if invert match is not requested (direct match)
@@ -129,7 +121,7 @@ def showudpmatch(timestamp, addrs, payload, start, end, reexpr):
 
 # tcp callback handler
 def handletcp(tcp):
-	global streamct, maxinspstreams, maxinspbytes, tcpmatches, tcpdone, udpdone, matched, openstreams, cregexes, sregexes
+	global streamct, maxinspstreams, maxinspbytes, tcpmatches, tcpdone, udpdone, openstreams, cregexes, sregexes
 	data = finalpayload = timestamp = ""
         cmatched = smatched = 0
 
@@ -168,49 +160,55 @@ def handletcp(tcp):
 			cfinalpayload = tcp.server.data
 			sfinalpayload = tcp.client.data
 
-#                print "[D] tcp.addr in openstreams? %d" % (tcp.addr in openstreams)
-
-		if flags['C'] and tcp.addr in openstreams:
+		if len(cfinalpayload) > 0 and flags['C'] and tcp.addr in openstreams:
 			for regexobj in cregexes:
-				for match in regexobj.finditer(cfinalpayload):	# match regex and generate an iterable match object
-					cmatched = 1
-					if not flags['v']:
-	 					start = match.start()		# find starting offset of matched bytes
-						end = match.end()		# find ending offset of matched bytes
-						tcpmatches += 1			# increment tcp match counter
-						showtcpmatch(timestamp, tcp.addr, cfinalpayload, start, end, getregexpattern(regexobj), "CTS")
+				if tcp.addr in cmatchedstrs and regexobj in cmatchedstrs[tcp.addr]:
+					pass
+				else:
+					cmatchedstrs.setdefault(tcp.addr, []).append(regexobj)
 
-                                if not cmatched and flags['v']:
-                                        cmatched = 1
-                                        start = 0
-                                        end = len(cfinalpayload)
-                                        tcpmatches += 1
-                                        showtcpmatch(timestamp, tcp.addr, cfinalpayload, start, end, None, "CTS")
+					for match in regexobj.finditer(cfinalpayload):	# match regex and generate an iterable match object
+						cmatched = 1
+						if not flags['v']:
+	 						start = match.start()		# find starting offset of matched bytes
+							end = match.end()		# find ending offset of matched bytes
+							tcpmatches += 1			# increment tcp match counter
+							showtcpmatch(timestamp, tcp.addr, cfinalpayload, start, end, getregexpattern(regexobj), "CTS")
 
-		if flags['S'] and tcp.addr in openstreams:
+                	                if not cmatched and flags['v']:
+        	                                cmatched = 1
+                        	                start = 0
+                                	        end = len(cfinalpayload)
+                                        	tcpmatches += 1
+	                                        showtcpmatch(timestamp, tcp.addr, cfinalpayload, start, end, None, "CTS")
+
+		if len(sfinalpayload) > 0 and flags['S'] and tcp.addr in openstreams:
 			for regexobj in sregexes:
-				for match in regexobj.finditer(sfinalpayload):	# match regex and generate an iterable match object
-					smatched = 1
-					if not flags['v']:
-						start = match.start()		# find starting offset of matched bytes
-						end = match.end()		# find ending offset of matched bytes
-						tcpmatches += 1			# increment tcp match counter
-						showtcpmatch(timestamp, tcp.addr, sfinalpayload, start, end, getregexpattern(regexobj), "STC")
+				if tcp.addr in smatchedstrs and regexobj in smatchedstrs[tcp.addr]:
+					pass
+				else:
+					smatchedstrs.setdefault(tcp.addr, []).append(regexobj)
 
-                                if  not smatched and flags['v']:
-                                        smatched = 1
-                                        start = 0
-                                        end = len(sfinalpayload)	        # should dump all of the payload coz we don't have match offsets
-                			tcpmatches += 1				# increment tcp match counter
-                			showtcpmatch(timestamp, tcp.addr, sfinalpayload, start, end, None, "STC")
+					for match in regexobj.finditer(sfinalpayload):	# match regex and generate an iterable match object
+						smatched = 1
+						if not flags['v']:
+	 						start = match.start()		# find starting offset of matched bytes
+							end = match.end()		# find ending offset of matched bytes
+							tcpmatches += 1			# increment tcp match counter
+							showtcpmatch(timestamp, tcp.addr, sfinalpayload, start, end, getregexpattern(regexobj), "STC")
+
+                	                if not smatched and flags['v']:
+        	                                smatched = 1
+                        	                start = 0
+                                	        end = len(sfinalpayload)
+                                        	tcpmatches += 1
+	                                        showtcpmatch(timestamp, tcp.addr, sfinalpayload, start, end, None, "STC")
 
                 if cmatched or smatched:
                         if flags['k']: tcp.kill
-                        if tcp.addr in openstreams: openstreams.remove(tcp.addr)
 
 	elif tcp.nids_state in endstates:                                       # if a stream is closed, reset, or timed out
- 		if tcp.addr in openstreams:					# no match for this stream,
-			openstreams.remove(tcp.addr)				# stop tracking it please
+ 		if tcp.addr in openstreams: openstreams.remove(tcp.addr)	# stop tracking it pleasei
 		timestamp = nids.get_pkt_ts()					# read timestamp
 
 	else:
@@ -289,7 +287,7 @@ def writetofile(timestamp, src, sport, dst, dport, payload, proto):
 
 # shows arguments stats
 def dumpargsstats(args):
-	global flags, maxinsppackets, maxinspstreams, maxinspbytes, maxdisppackets, maxdispstreams, maxdispbytes, logdir
+	global flags, maxinsppackets, maxinspstreams, maxinspbytes, maxdisppackets, maxdispstreams, maxdispbytes, logdir, cregexes, sregexes
 
 	if flags['p']:
 		print "%-30s" % "[+] Input pcap:", ; print "[ %s ]" % (args.pcap)
@@ -298,15 +296,20 @@ def dumpargsstats(args):
 		if flags['k']: print "[ w/ \"killtcp\" ]"
 		else: print
 
+	if len(cregexes) > 0:
+		print "%-30s" % "[+] RegEx Pattern:", ; print "[ CTS:",
+		for c in cregexes:
+			print "\"%s\"" % getregexpattern(c),
+		print "]",
+	if len(sregexes) > 0:
+		print "[ STC:",
+		for s in sregexes:
+			print "\"%s\"" % getregexpattern(s),
+		print "]",
+	print
+
 	if args.filter:
 		print "%-30s" % "[+] BPF expression:", ; print "[ \"%s\" ]" % (args.filter)
-
-	print "%-30s" % "[+] TCP Inspection Direction:", ; print "[",
-	if flags['C']: print "CTS",
-	if flags['S']: print "STC",
-	print "]"
-
-        print "[D] CTS: %d, STC: %d" % (len(cregexes), len(sregexes))
 
 	print "%-30s" % "[+] Inspection limits:",
 	print "[ Streams: %d | Packets: %d | Bytes: %d ]" % (maxinspstreams, maxinsppackets, maxinspbytes)
@@ -356,7 +359,8 @@ def exitwithstats():
 
 # main routine
 def main():
-	global version, reflags, udpregex, tcpregex, openstreams, maxinsppackets, maxinspstreams, maxinspbytes, maxdisppackets, maxdispstreams, maxdispbytes, packetct, streamct, flags, logdir, cregexes, sregexes, aregexes
+	global version, reflags, udpregex, tcpregex, openstreams, maxinsppackets, maxinspstreams, maxinspbytes, \
+		maxdisppackets, maxdispstreams, maxdispbytes, packetct, streamct, flags, logdir, cregexes, sregexes, aregexes
 
 	parser = argparse.ArgumentParser()
 
@@ -481,7 +485,7 @@ def main():
 			for s in args.sres:
 				sregexes.append(re.compile(s, reflags))
 
-                if not cregexes and not sregexes and not aregexes:
+                if not cregexes and not sregexes:
 			print "[-] Need a regex expression."
 			print "[-] Use direction flags [CSA] to specify one."
 			sys.exit(1)
@@ -505,10 +509,10 @@ def main():
 		print
 		print "[-] NIDS error: %s" % nx
 		sys.exit(1)
-        except Exception, ex:
+	except Exception, ex:
 		print
-                print "[-] Exception: %s" % ex
-                sys.exit(1)
+		print "[-] Exception: %s" % ex
+		sys.exit(1)
 
 	exitwithstats()
 
