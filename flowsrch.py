@@ -28,7 +28,7 @@ maxdisppackets = maxdispstreams = maxdispbytes = 0				# max display counters
 shortestmatch = {'u':0, 't':0, 'U':0, 'T':0}					# shortest display/inspection match counters
 longestmatch = {'u':0, 't':0, 'U':0, 'T':0}					# longest display/inspection match counters
 flags = {'d':0, 'p':0, 'v':0, 'C':0, 'S':0, 'A':0, \
-	 'k':0, 'w':0, 'q':0, 'm':0, 'h':0, 'a':0, 'r':0}			# cmdline args dictionary
+	 'k':0, 'w':0, 'q':0, 'm':0, 'h':0, 'P':0, 'r':0}			# cmdline args dictionary
 
 
 # udp callback handler
@@ -114,7 +114,7 @@ def showudpmatch(timestamp, addrs, payload, start, end, reexpr):
 
 	if flags['r']: print("%s\n" % payload[start:dispend])
 
-	if flags['a']: printable(payload[start:dispend])
+	if flags['P']: printable(payload[start:dispend])
 
 	if flags['h']: hexdump(payload[start:dispend])
 
@@ -174,6 +174,9 @@ def handletcp(tcp):
 							end = match.end()		# find ending offset of matched bytes
 							tcpmatches += 1			# increment tcp match counter
 							showtcpmatch(timestamp, tcp.addr, cfinalpayload, start, end, getregexpattern(regexobj), "CTS")
+							if flags['k']:
+								print "[+] Killing tcp session"
+								tcp.kill
 
                 	                if not cmatched and flags['v']:
         	                                cmatched = 1
@@ -181,6 +184,7 @@ def handletcp(tcp):
                                 	        end = len(cfinalpayload)
                                         	tcpmatches += 1
 	                                        showtcpmatch(timestamp, tcp.addr, cfinalpayload, start, end, None, "CTS")
+						if flags['k']: tcp.kill
 
 		if len(sfinalpayload) > 0 and flags['S'] and tcp.addr in openstreams:
 			for regexobj in sregexes:
@@ -196,6 +200,7 @@ def handletcp(tcp):
 							end = match.end()		# find ending offset of matched bytes
 							tcpmatches += 1			# increment tcp match counter
 							showtcpmatch(timestamp, tcp.addr, sfinalpayload, start, end, getregexpattern(regexobj), "STC")
+							if flags['k']: tcp.kill
 
                 	                if not smatched and flags['v']:
         	                                smatched = 1
@@ -203,9 +208,7 @@ def handletcp(tcp):
                                 	        end = len(sfinalpayload)
                                         	tcpmatches += 1
 	                                        showtcpmatch(timestamp, tcp.addr, sfinalpayload, start, end, None, "STC")
-
-                if cmatched or smatched:
-                        if flags['k']: tcp.kill
+						if flags['k']: tcp.kill
 
 	elif tcp.nids_state in endstates:                                       # if a stream is closed, reset, or timed out
  		if tcp.addr in openstreams: openstreams.remove(tcp.addr)	# stop tracking it pleasei
@@ -258,7 +261,7 @@ def showtcpmatch(timestamp, addrs, payload, start, end, reexpr, dir):
 
 	if flags['r']: print("%s\n" % payload[start:dispend])
 
-	if flags['a']: printable(payload[start:dispend])
+	if flags['P']: printable(payload[start:dispend])
 
 	if flags['h']: hexdump(payload[start:dispend])
 
@@ -297,16 +300,16 @@ def dumpargsstats(args):
 		else: print
 
 	if len(cregexes) > 0:
-		print "%-30s" % "[+] RegEx Pattern:", ; print "[ CTS:",
+		print "%-30s" % "[+] CTS RegEx:", ; print "[",
 		for c in cregexes:
 			print "\"%s\"" % getregexpattern(c),
-		print "]",
+		print "]"
+
 	if len(sregexes) > 0:
-		print "[ STC:",
+		print "%-30s" % "[+] STC RegEx:", ; print "[",
 		for s in sregexes:
 			print "\"%s\"" % getregexpattern(s),
-		print "]",
-	print
+		print "]"
 
 	if args.filter:
 		print "%-30s" % "[+] BPF expression:", ; print "[ \"%s\" ]" % (args.filter)
@@ -317,13 +320,15 @@ def dumpargsstats(args):
 	print "[ Streams: %d | Packets: %d | Bytes: %d ]" % (maxdispstreams, maxdisppackets, maxdispbytes)
 
 	print "%-30s" % "[+] Output modes:", ; print "[",
-	if flags['q']: print "quite"
-	else:
+	if flags['q']:
+		print "quite"
 		if flags['w']: print "write: %s" % logdir,
+	else:
 		if flags['m']: print "meta",
 		if flags['h']: print "hex",
-		if flags['a']: print "ascii",
+		if flags['P']: print "print",
 		if flags['r']: print "raw",
+		if flags['w']: print "write: %s" % logdir,
 	print "]"
 
 	print
@@ -349,9 +354,6 @@ def exitwithstats():
 	if streamct >= 0:
 		print "[T] Processed: %d | Matches: %d | Shortest: %dB (#%d) | Longest: %dB (#%d)" % \
 		(streamct, tcpmatches, shortestmatch['t'], shortestmatch['T'], longestmatch['t'], longestmatch['T'])
-
-	if len(openstreams) > 0:
-		print "[!] Skipped streams: %d (tcp.state did not match endstates)" % len(openstreams)
 
 	print "[+] Flowsrch session complete. Exiting."
 	sys.exit(0)
@@ -390,7 +392,7 @@ def main():
 
 	parser.add_argument('-k', dest="killtcp", default=False, action="store_true", required=False, help="kill matching TCP stream")
 
-	parser.add_argument('-o', dest="outmode", choices=('quite', 'meta', 'hex', 'ascii', 'raw'), action="append",  default=[], required=False, help="match output mode")
+	parser.add_argument('-o', dest="outmode", choices=('quite', 'meta', 'hex', 'print', 'raw'), action="append",  default=[], required=False, help="match output mode")
 
 	parser.add_argument('-V', action='version', version='%(prog)s 0.1')
 
@@ -462,7 +464,7 @@ def main():
 			if mode == "quite": flags['q'] = 1
 			elif mode == "meta": flags['m'] = 1
 			elif mode == "hex": flags['h'] = 1
-			elif mode == "ascii": flags['a'] = 1
+			elif mode == "print": flags['P'] = 1
 			elif mode == "raw": flags['r'] = 1
 
 	try:
