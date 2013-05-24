@@ -6,7 +6,7 @@ usage: flowsrch.py [-h] (-d --device | -p --pcap) [-f --filter] [-C --cregex]
                    [-T --maxinspstreams] [-U --maxinsppackets]
                    [-B --maxinspbytes] [-t --maxdispstreams]
                    [-u --maxdisppackets] [-b --maxdispbytes] [-w [logdir]]
-                   [-k] [-o {quite,meta,hex,ascii,raw}] [-V]
+                   [-k] [-o {quite,meta,hex,print,raw}] [-V]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -27,7 +27,7 @@ optional arguments:
   -b --maxdispbytes     max bytes to display
   -w [logdir]           write matching packets/streams
   -k                    kill matching TCP stream
-  -o {quite,meta,hex,ascii,raw}
+  -o {quite,meta,hex,print,raw}
                         match output mode
   -V                    show program's version number and exit
 
@@ -39,3 +39,4 @@ EXAMPLES:
 2. Stop PKZIP downloads:
 # ./flowsrch.py -d eth0 -S "PK\x03\x04" -k
 
+3. 
