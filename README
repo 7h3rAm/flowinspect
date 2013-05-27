@@ -1,4 +1,7 @@
-A Flowgrep-like tool for network traffic inspection.
+flowsrch v0.1 - Ankur Tyagi (7h3rAm)
+Juniper Networks - Security Research Group
+
+A Flowgrep-like tool for network traffic inspection. It uses pynids to defragment IP/reassemble TCP packets. Such flows are then inspected using Python's re module that supports PCRE-like patterns, invert and multiline matches, etc. Match scope could be limited through BPF expressions or via packets/streams/bytes inspection limit flags. Flows could also be logged to files in addition to being dumped on stdout. Has a few useful output modes to help with investigation.
 
 HELP:
 usage: flowsrch.py [-h] (-d --device | -p --pcap) [-f --filter] [-C --cregex]
@@ -33,10 +36,20 @@ optional arguments:
 
 
 EXAMPLES:
-1. Show outgoing HTTP sessions:
+1. Look at HTTP sessions:
 # ./flowsrch.py -d eth0 -C "^(GET|POST|HEAD|PUT).*" -f "tcp and port 80" -o ascii
 
-2. Stop PKZIP downloads:
-# ./flowsrch.py -d eth0 -S "PK\x03\x04" -k
+2. Stop Metasploit .jar downloads:
+# ./flowsrch.py -d eth0 -S "PK\x03\x04.*metasploit" -k
 
-3. 
+3. Quickly scan for Blackhole Exploit Kit infections (enable multiline match and restrict display to max 64B):
+# ./flowsrch.py -d eth0 -C "/forum/links/(column|news)\.php\?\w+=(\d\w:?)+" -mb64
+
+4. Inspect HTTP streams for Metasploit ie_cgenericelement_uaf exploit (CVE-2013-1347):
+# ./flowsrch.py -p msfiecgenericelement.pcap -S "CollectGarbage\(\);.*mstime_malloc\({shellcode:magenta, heapBlockSize:0x38, objId:"myanim"}\);" -f "not udp"
+
+
+INSTALLATION:
+Make sure you have a woking Python installations. The only extrenal dependency is pynids which you can grab from here: http://jon.oberheide.org/pynids/. and you will be good to go. If you face issues while installing pynids, let me know.
+
+
