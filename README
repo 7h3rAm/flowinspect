@@ -1,7 +1,9 @@
 flowsrch v0.1 - Ankur Tyagi (7h3rAm)
 Juniper Networks - Security Research Group
 
-A Flowgrep-like tool for network traffic inspection. It uses pynids to defragment IP/reassemble TCP packets. Such flows are then inspected using Python's re module that supports PCRE-like patterns, invert and multiline matches, etc. Match scope could be limited through BPF expressions or via packets/streams/bytes inspection limit flags. Flows could also be logged to files in addition to being dumped on stdout. Has a few useful output modes to help with investigation.
+A Flowgrep-like tool for network traffic inspection. It uses pynids to defragment IP/reassemble TCP packets. Such flows are then inspected using Python's "re" module that supports PCRE-like patterns, case-insensitive, invert and multiline matches, etc. Match scope could be limited through BPF expressions or via packets/streams/bytes inspection limit flags. Flows could also be logged to files in addition to being dumped on stdout. A few useful output modes help with further anaylysis.
+
+You could request inspection per direction or for both CTS and STC directions. However, each pattern is inspected only once per stream, per direction. For multiple patterns, matching happens independently and as such previous match results won't affect subsequent matches. For UDP, since there is no flow to search upon, matches happen over individual packet payloads.
 
 HELP:
 usage: flowsrch.py [-h] (-d --device | -p --pcap) [-f --filter] [-C --cregex]
@@ -50,6 +52,5 @@ EXAMPLES:
 
 
 INSTALLATION:
-Make sure you have a woking Python installations. The only extrenal dependency is pynids which you can grab from here: http://jon.oberheide.org/pynids/. and you will be good to go. If you face issues while installing pynids, let me know.
-
+Make sure you have a working Python installation. The only other dependency is pynids which you can grab from here: http://jon.oberheide.org/pynids/. Reach out if you need help setting up pynids or for any other queries.
 
