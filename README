@@ -33,8 +33,8 @@ optional arguments:
 
 
 EXAMPLES:
-1. Show HTTP sessions on TCP/8080:
-# ./flowsrch.py -p test.pcap -C "^GET|^POST|^HEAD|^PUT" -mf "tcp port 8080"
+1. Show outgoing HTTP sessions:
+# ./flowsrch.py -d eth0 -C "^(GET|POST|HEAD|PUT).*" -f "tcp and port 80" -o ascii
 
 2. Stop PKZIP downloads:
 # ./flowsrch.py -d eth0 -S "PK\x03\x04" -k

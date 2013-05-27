@@ -1,5 +1,5 @@
 [x] matched @ [...:...]
                     ^ should show the regex matched start/end offsets and not consider display length restrictions.
 [x] -T42 : fails (off-by-one)
-[ ] excessive 00 bytes (gets written to file as well)
+[ ] excessive 00 bytes. will have to experiment with discard a bit further.
 

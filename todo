@@ -7,6 +7,4 @@
 [x] out modes: quite, meta, hex, ascii, raw (+write)
 [x] write/append matched packets/streams to a file
 [ ] write matched packets/streams to a pcap file (like in py-greppcap)
-[ ] http content-encoding: gzip/deflate/compress / http transfer encoding: chunked
-[ ] smtp content encoding (base64/mime)
 

@@ -1,28 +1,34 @@
 #!/usr/bin/env python2 
 
-import os, sys, argparse, re
+__author__	= "Ankur Tyagi (7h3rAm)"
+__email__ 	= "7h3rAm [at] gmail [dot] com"
+__version__ 	= "0.1"
+__license__ 	= "CC-BY-SA 3.0"
+__status__ 	= "Development"
 
-sys.dont_write_bytecode = True
-from utils import *
+import os, sys, argparse, re
 
 try: import nids								# try importing NIDS; exit on error
 except ImportError, ex:
-	print "[-] Import failed: %s" % (ex)
+	print "[-] Import failed: %s" % ex
 	sys.exit(1)
+
+sys.dont_write_bytecode = True
+from utils import *
 
 
 # globals
 version = "0.1"									# flowsrch version
 reflags = 0									# regex match flags
 logdir = ""									# directory to log matched content
-cregexes = []
-sregexes = []									# list of compiled regex objects
+cregexes = []									# list of CTS compiled regex objects
+sregexes = []									# list of STC compiled regex objects
 openstreams = []								# list of open streams
-cmatchedstrs = {}
-smatchedstrs = {}								# dictinaries for client/server matched streams
+cmatchedstrs = {}								# CTS matched {stream: [regexobj1, ...]}
+smatchedstrs = {}								# STC matched {stream: [regexobj1, ...]}
 udpdone = tcpdone = 0								# max packet/stream inspection flags
 packetct = streamct = 0								# packet/stream counters
-udpmatches = tcpmatches = 0							# udp/tcp match counters
+udpmatches = tcpmatches = 0							# packet/stream match counters
 maxinsppackets = maxinspstreams = maxinspbytes = 0				# max inspection counters
 maxdisppackets = maxdispstreams = maxdispbytes = 0				# max display counters
 shortestmatch = {'u':0, 't':0, 'U':0, 'T':0}					# shortest display/inspection match counters
@@ -33,77 +39,76 @@ flags = {'d':0, 'p':0, 'v':0, 'C':0, 'S':0, 'A':0, \
 
 # udp callback handler
 def handleudp(addrs, payload, pkt):
-	global udpregex, packetct, maxinsppackets, maxinspbytes, udpmatches, udpdone, tcpdone, matched, cregexes, sregexes
-        finalpayload = timestamp = 0
-	matched = 0
+	global udpregex, packetct, maxinsppackets, maxinspbytes, udpmatches, \
+		udpdone, tcpdone, matched, cregexes, sregexes
 
-	if maxinsppackets != 0 and packetct >= maxinsppackets:			# if max packet inspection count is non-zero
- 		udpdone = 1							# and we have reached that limit
-		donetcpudp()							# set flag and return
-		return
+        finalpayload = timestamp = matched = 0
 
-        packetct += 1								# increment packet counter
-	timestamp = nids.get_pkt_ts()
+	if maxinsppackets != 0 and packetct >= maxinsppackets:			# max packet inspection limit is reached
+ 		udpdone = 1							# mark udp inspection to be complete
+		donetcpudp()							# check if tcp inspection is also complete
+		return								# else ignore this packet and return
 
-	if maxinspbytes > 0:							# if max inspection depth is non-zero
-		finalpayload = payload[:maxinspbytes]				# extract depth bytes from payload
+        packetct += 1								# increment processed packets counter
+	timestamp = nids.get_pkt_ts()						# read packet timestamp
+
+	if maxinspbytes > 0:							# max inspection depth is non-zero
+		finalpayload = payload[:maxinspbytes]				# extract only requested bytes from payload
 	else:
 		finalpayload = payload						# else extract all bytes from payload
 
-	fregexes = cregexes + sregexes
+	fregexes = cregexes + sregexes						# CTS-STC is all same, use just one list
 
-	if not matched:
-		for regexobj in fregexes:
-			for match in regexobj.finditer(finalpayload):		# match regex and generate iterable match object
-				matched = 1
-				if not flags['v']:				# if invert match is not requested (direct match)
-					start = match.start()			# find starting offset of matched bytes
-					end = match.end()			# find ending offset of matched bytes
-					udpmatches += 1				# increment udp match counter
-					showudpmatch(timestamp, addrs, finalpayload, start, end, getregexpattern(regexobj))
-			if matched: break
+	for regexobj in fregexes:	
+		for match in regexobj.finditer(finalpayload):			# match regex and generate iterable match object
+			matched = 1						# match found? start iterating
+			if not flags['v']:					# invert match is not requested
+				start = match.start()				# get start offset of matched bytes
+				end = match.end()				# get end offset of matched bytes
+				udpmatches += 1					# increment udp matches counter
+				showudpmatch(timestamp, addrs, finalpayload, start, end, getregexpattern(regexobj))
 
-	if not matched:								# packet did not match
-		if flags['v']:							# and invert match is requested
-			start = 0						# point to the start of the payload
-			end = len(finalpayload)					# should dump all of teh payload coz we don't have match offsets
-			udpmatches += 1						# increment udp match counter
+	if not matched:								# no match found earlier
+		if flags['v']:							# invert match is requested
+			start = 0						# we don't have match offsets, point to start
+			end = len(finalpayload)					# we don't have match offsets, point to end
+			udpmatches += 1						# increment udp matches counter
 			showudpmatch(timestamp, addrs, finalpayload, start, end, None)
 
 
 # show udp packet details and match stats
 def showudpmatch(timestamp, addrs, payload, start, end, reexpr):
-	global packetct, maxinsppackets, maxinspbytes, udpmatches, maxdisppackets, shortestmatch, longestmatch
-	((src,sport), (dst,dport)) = addrs
+	global packetct, maxinsppackets, maxinspbytes, udpmatches, \
+		maxdisppackets, shortestmatch, longestmatch
 
+	((src,sport), (dst,dport)) = addrs
 	count = end - start
-	if count == 0:								# if matched payload is of size 0 (regex returns 0 bytes matches for some expressions)
-		udpmatches -= 1							# don't track such matches
+
+	if count == 0:								# regex returned 0 byte match
+		udpmatches -= 1							# don't track it
  		return								# and return
 
-	if maxdisppackets != 0 and udpmatches > maxdisppackets:			# if user requested packet matches have been dumped
-		udpdone = 1							# mark completion of udp packets inspection
-		donetcpudp()							# check if max stream and packet inspection limits have been exhausted
- 		return								# if above fails, return anyways
+	if maxdisppackets != 0 and udpmatches > maxdisppackets:			# max packet display limit is reached
+ 		return								# skip display and return
 
-	if udpmatches == 1:							# if its the first udp match, track it as the 
+	if udpmatches == 1:							# first udp match, track it as
 		shortestmatch['u'] = count					# shortest and
 		shortestmatch['U'] = udpmatches
 		longestmatch['u'] = count					# longest match
  		longestmatch['U'] = udpmatches
 
-	if shortestmatch['u'] > count:						# if a shorter match if found
-		shortestmatch['u'] = count					# track it as the new shortest match
+	if shortestmatch['u'] > count:						# shorter match, if found,
+		shortestmatch['u'] = count					# track as the new shortest match
  		shortestmatch['U'] = udpmatches
 
-	if longestmatch['u'] < count:						# if a new longest match is found
-		longestmatch['u'] = count					# track it as the new longest match
+	if longestmatch['u'] < count:						# longer match, if found,
+		longestmatch['u'] = count					# track as the new longest match
  		longestmatch['U'] = udpmatches
 
-	if maxdispbytes == 0 or count <= maxdispbytes:				# tune display limits
-		dispend = end
+	if maxdispbytes == 0 or count <= maxdispbytes:				# max display limit is uncapped
+		dispend = end							# display entire matched payload
 	else:
-		dispend = start+maxdispbytes
+		dispend = start+maxdispbytes					# else display max requested bytes only
 
 	if flags['w']: writetofile(timestamp, src, sport, dst, dport, payload, "udp")
 
@@ -121,136 +126,135 @@ def showudpmatch(timestamp, addrs, payload, start, end, reexpr):
 
 # tcp callback handler
 def handletcp(tcp):
-	global streamct, maxinspstreams, maxinspbytes, tcpmatches, tcpdone, udpdone, openstreams, cregexes, sregexes
+	global streamct, maxinspstreams, maxinspbytes, tcpmatches, tcpdone, \
+		udpdone, openstreams, cregexes, sregexes
+
+	if tcpdone:								# max stream inspection count is reached
+		donetcpudp()							# check if we can exit
+		return								# else return
+
 	data = finalpayload = timestamp = ""
         cmatched = smatched = 0
 
-	if tcpdone:								# if max stream inspection count is reached
-		donetcpudp()							# check if we can exit
- 		return								# else return
-
-	if maxinspstreams != 0 and streamct > maxinspstreams:			# if max stream inspection count is non-zero
+	if maxinspstreams != 0 and streamct > maxinspstreams:			# max stream inspection count is non-zero
 		streamct = maxinspstreams					# adjust inspected stream count
-		tcpdone = 1							# and we have reached that limit
+		tcpdone = 1							# mark tcp inspection to be complete
 		donetcpudp()							# set flag and return
  		return
 
 	endstates = (nids.NIDS_CLOSE, nids.NIDS_TIMED_OUT, nids.NIDS_RESET)	# possible stream termination states
 
-	if tcp.nids_state == nids.NIDS_JUST_EST:				# if a new stream is available
-		if flags['C']:							# and CTS stream has to be inspected
-			tcp.server.collect = 1					# mark it for data collection
-
-                if flags['S']:							# and STC stream has to be inspected
-			tcp.client.collect = 1					# mark it for data collection
-
-		if tcp.addr not in openstreams:					# if not already tracking
-			openstreams.append(tcp.addr)				# start tracking this stream
+	if tcp.nids_state == nids.NIDS_JUST_EST:				# a new stream is setup
+		if tcp.addr not in openstreams:					# not already tracking
+			openstreams.append(tcp.addr)				# start tracking
 			streamct += 1						# increment stream counter
 
-	elif tcp.nids_state == nids.NIDS_DATA:                                  # if a stream has data
+		if flags['C']:							# CTS stream has to be inspected
+			tcp.server.collect = 1					# mark it for data collection
+
+                if flags['S']:							# STC stream has to be inspected
+			tcp.client.collect = 1					# mark it for data collection
+
+	elif tcp.nids_state == nids.NIDS_DATA:                                  # a stream has data
 		tcp.discard(0)			                                # discard first 0 bytes; collect entire payload
 
 		timestamp = nids.get_pkt_ts()					# read timestamp
 
-		if maxinspbytes != 0:						# if max inspection depth is non-zero
-			cfinalpayload = tcp.server.data[:maxinspbytes]
-			sfinalpayload = tcp.client.data[:maxinspbytes]
+		if maxinspbytes != 0:						# max inspection depth is non-zero
+			cfinalpayload = tcp.server.data[:maxinspbytes]		# extract requested bytes of server payload
+			sfinalpayload = tcp.client.data[:maxinspbytes]		# extract requested bytes of client payload
 		else:
-			cfinalpayload = tcp.server.data
-			sfinalpayload = tcp.client.data
+			cfinalpayload = tcp.server.data				# extract entire server payload
+			sfinalpayload = tcp.client.data				# extract entire client payload
 
 		if len(cfinalpayload) > 0 and flags['C'] and tcp.addr in openstreams:
 			for regexobj in cregexes:
 				if tcp.addr in cmatchedstrs and regexobj in cmatchedstrs[tcp.addr]:
-					pass
-				else:
+					pass					# already matched this stream on regexobj? skip
+				else:						# else add this stream and regexobj to match dict
 					cmatchedstrs.setdefault(tcp.addr, []).append(regexobj)
 
-					for match in regexobj.finditer(cfinalpayload):	# match regex and generate an iterable match object
-						cmatched = 1
-						if not flags['v']:
-	 						start = match.start()		# find starting offset of matched bytes
-							end = match.end()		# find ending offset of matched bytes
-							tcpmatches += 1			# increment tcp match counter
+					for match in regexobj.finditer(cfinalpayload):
+						cmatched = 1			# match found? start iterating
+						if not flags['v']:		# invert match not requested
+	 						start = match.start()	# get start offset of matched bytes
+							end = match.end()	# get end offset of matched bytes
+							tcpmatches += 1		# increment tcp matches counter
 							showtcpmatch(timestamp, tcp.addr, cfinalpayload, start, end, getregexpattern(regexobj), "CTS")
-							if flags['k']:
-								print "[+] Killing tcp session"
-								tcp.kill
+							if flags['k']: tcp.kill	# kill if asked to
 
-                	                if not cmatched and flags['v']:
-        	                                cmatched = 1
-                        	                start = 0
-                                	        end = len(cfinalpayload)
-                                        	tcpmatches += 1
+                	                if not cmatched and flags['v']:		# no match found earlier; invert match
+        	                                cmatched = 1			# flag stream as matched
+                        	                start = 0			# we don't have match offsets, point to start
+                                	        end = len(cfinalpayload)	# we don't have match offsets, point to end
+                                        	tcpmatches += 1			# increment tcp matches counter
 	                                        showtcpmatch(timestamp, tcp.addr, cfinalpayload, start, end, None, "CTS")
-						if flags['k']: tcp.kill
+						if flags['k']: tcp.kill		# kill if asked to
 
 		if len(sfinalpayload) > 0 and flags['S'] and tcp.addr in openstreams:
 			for regexobj in sregexes:
 				if tcp.addr in smatchedstrs and regexobj in smatchedstrs[tcp.addr]:
-					pass
-				else:
+					pass					# already matched this stream on regexobj? skip
+				else:						# else add this stream and regexobj to match dict
 					smatchedstrs.setdefault(tcp.addr, []).append(regexobj)
 
-					for match in regexobj.finditer(sfinalpayload):	# match regex and generate an iterable match object
-						smatched = 1
-						if not flags['v']:
-	 						start = match.start()		# find starting offset of matched bytes
-							end = match.end()		# find ending offset of matched bytes
-							tcpmatches += 1			# increment tcp match counter
+					for match in regexobj.finditer(sfinalpayload):
+						smatched = 1			# match found? start iterating
+						if not flags['v']:		# invert match not requested
+	 						start = match.start()	# get start offset of matched bytes
+							end = match.end()	# get end offset of matched bytes
+							tcpmatches += 1		# increment tcp matches counter
 							showtcpmatch(timestamp, tcp.addr, sfinalpayload, start, end, getregexpattern(regexobj), "STC")
-							if flags['k']: tcp.kill
+							if flags['k']: tcp.kill	# kill if asked to
 
-                	                if not smatched and flags['v']:
-        	                                smatched = 1
-                        	                start = 0
-                                	        end = len(sfinalpayload)
-                                        	tcpmatches += 1
+                	                if not smatched and flags['v']:		# no match found earlier; invert match
+        	                                smatched = 1			# flag stream as matched
+                        	                start = 0			# we don't have match offsets, point to start
+                                	        end = len(sfinalpayload)	# we don't have match offsets, point to end
+                                        	tcpmatches += 1			# increment tcp matches counter
 	                                        showtcpmatch(timestamp, tcp.addr, sfinalpayload, start, end, None, "STC")
-						if flags['k']: tcp.kill
+						if flags['k']: tcp.kill		# kill if asked to
 
-	elif tcp.nids_state in endstates:                                       # if a stream is closed, reset, or timed out
- 		if tcp.addr in openstreams: openstreams.remove(tcp.addr)	# stop tracking it pleasei
-		timestamp = nids.get_pkt_ts()					# read timestamp
+	elif tcp.nids_state in endstates:                                       # stream is closed, reset, or timed out
+ 		if tcp.addr in openstreams: openstreams.remove(tcp.addr)	# stop tracking it
 
 	else:
-		print >>sys.stderr, "[!] Unknown NIDS state: %s" % (tcp.nids_state)
+		print >>sys.stderr, "[!] Unknown NIDS state: %s" % tcp.nids_state
 
 
 # show tcp stream details and match stats
 def showtcpmatch(timestamp, addrs, payload, start, end, reexpr, dir):
-	global streamct, maxinspstreams, maxinspbytes, tcpmatches, maxdispstreams, flags
-	((src,sport), (dst,dport)) = addrs
+	global streamct, maxinspstreams, maxinspbytes, tcpmatches, \
+		maxdispstreams, flags
 
+	((src,sport), (dst,dport)) = addrs
 	count = end - start
-	if count == 0:								# if matched payload is of size 0 (regex returns 0 byte matches for some expressions)
+
+	if count == 0:								# regex retuned 0 bytes match
  		tcpmatches -= 1							# don't track such matches
 		return								# and return
 
-	if maxdispstreams != 0 and tcpmatches > maxdispstreams:			# if user requested streams have been dumped
- 		tcpdone = 1							# mark completion of tcp streams inspection
-		donetcpudp()							# check if max stream and packet inspection limits have been exhausted
-		return								# if above fails, return anyways
+	if maxdispstreams != 0 and tcpmatches > maxdispstreams:			# max packet display limit is reached
+		return								# skip display and return
 
-	if tcpmatches == 1:							# if its the first tcp match, track it as the
+	if tcpmatches == 1:							# first tcp match, track it as
 		shortestmatch['t'] = count					# shortest and
 		shortestmatch['T'] = tcpmatches
 		longestmatch['t'] = count					# longest match
 		longestmatch['T'] = tcpmatches
 
-	if shortestmatch['t'] > count:						# if a shorter match is found
-		shortestmatch['t'] = count					# track it as the new shortest match
+	if shortestmatch['t'] > count:						# shorter match, is found,
+		shortestmatch['t'] = count					# track as the new shortest match
 		shortestmatch['T'] = tcpmatches
 
-	if longestmatch['t'] < count:						# if a longer match is found
-		longestmatch['t'] = count					# track it as the new longest match
+	if longestmatch['t'] < count:						# longer match, is found,
+		longestmatch['t'] = count					# track as the new longest match
 		longestmatch['T'] = tcpmatches
 
-	if maxdispbytes == 0 or count <= maxdispbytes:				# tune display limits
-		dispend = end
+	if maxdispbytes == 0 or count <= maxdispbytes:				# max display limit is uncapped
+		dispend = end							# display entire matched payload
 	else:
-		dispend = start+maxdispbytes
+		dispend = start+maxdispbytes					# else display max requested bytes only
 
 	if flags['w']: writetofile(timestamp, src, sport, dst, dport, payload, "tcp")
 
@@ -268,7 +272,7 @@ def showtcpmatch(timestamp, addrs, payload, start, end, reexpr, dir):
 
 # ip callback handler
 def handleip(pkt):
-	timestamp = nids.get_pkt_ts()
+	timestamp = nids.get_pkt_ts()						# nothing much to do right now
 
 
 # logs payload to a dir/file
@@ -276,8 +280,7 @@ def writetofile(timestamp, src, sport, dst, dport, payload, proto):
 	global logdir
 
 	try:
-		if not os.path.isdir(logdir):
-			os.makedirs(logdir)
+		if not os.path.isdir(logdir): os.makedirs(logdir)
 	except OSError, oserr: print "[!] OSError: %s" % oserr
 
 	filename = "%s/%s-%s.%s-%s.%s-%s" % (logdir, str(timestamp).translate(None, '.'), src, sport, dst, dport, proto)
@@ -330,7 +333,6 @@ def dumpargsstats(args):
 		if flags['r']: print "raw",
 		if flags['w']: print "write: %s" % logdir,
 	print "]"
-
 	print
 
 
@@ -338,7 +340,7 @@ def dumpargsstats(args):
 def donetcpudp():
 	global udpdone, tcpdone
 
-	if tcpdone and udpdone:							# if we're done isnpecting max streams and packets
+	if udpdone and tcpdone:							# done isnpecting max streams/packets?
 		exitwithstats()							# display stats and exit
 
 
@@ -399,7 +401,7 @@ def main():
 	args = parser.parse_args()
 
 	print "%s v%s - A Flowgrep-like tool for network traffic inspection" % (os.path.basename(sys.argv[0]), version)
-	print "Juniper Networks - Security Research Group"
+	print "Ankur Tyagi (7h3rAm) @ Juniper Networks - Security Research Group"
 	print
 
 	nids.chksum_ctl([('0.0.0.0/0', False)])					# disable checksum verification
@@ -415,48 +417,47 @@ def main():
 		nids.param("device", args.device)				# set NIDS device parameter with device name
 
 	if args.filter != "":
-		nids.param("pcap_filter", args.filter)				# set NIDS filter parameter with input BPF expression
+		nids.param("pcap_filter", args.filter)				# set NIDS filter parameter with input BPF
 
 	if args.igncase == True:
-		reflags |= re.IGNORECASE					# enable case insensitive regex match flag
+		reflags |= re.IGNORECASE					# enable case insensitive regex match
 
 	if args.invmatch == True:
-		flags['v'] = 1							# enable invert match inspection
+		flags['v'] = 1							# enable invert match
 
 	if args.multiline == True:
-		reflags |= re.MULTILINE						# enable multiline regex match flag
-		reflags |= re.DOTALL						# enable dotall regex match flag (dot matches newline aswell)
+		reflags |= re.MULTILINE						# enable multiline regex match
+		reflags |= re.DOTALL						# enable dotall regex match
 
-	if args.killtcp == True:						# if tcp stream teardown is requested
-		if flags['d']:							# and we'll be inspecting on a live network
-			flags['k'] = 1						# enable killtcp
+	if args.killtcp == True:						# tcp stream teardown is requested
+		if flags['d']: flags['k'] = 1					# inspecting on a live network? enable killtcp
 
-	if args.maxinspstreams:							# if max stream inspection limit is provided,
+	if args.maxinspstreams:							# max stream inspection limit is provided
 		maxinspstreams = int(args.maxinspstreams)			# enable limit
 
-	if args.maxinsppackets:							# if max packet inspection limit is provided,
+	if args.maxinsppackets:							# max packet inspection limit is provided
 		maxinsppackets = int(args.maxinsppackets)			# enable limit
 
-	if args.maxinspbytes:							# if max inspection depth is provided,
+	if args.maxinspbytes:							# max inspection depth is provided
 		maxinspbytes = int(args.maxinspbytes)				# enable depth
 
-	if args.maxdispstreams:							# if max stream display limit is provided,
+	if args.maxdispstreams:							# max stream display limit is provided
 		maxdispstreams = int(args.maxdispstreams)			# enable limit
 
-	if args.maxdisppackets:							# if max packet display limit is provided,
+	if args.maxdisppackets:							# max packet display limit is provided
 		maxdisppackets = int(args.maxdisppackets)			# enable limit
 
-	if args.maxdispbytes:							# if max display depth is provided,
+	if args.maxdispbytes:							# max display depth is provided
 		maxdispbytes = int(args.maxdispbytes)				# enable depth
 
 	if args.writebytes != "":
-		flags['w'] = 1
+		flags['w'] = 1							# enable matched stream > fileout
 		if args.writebytes != None:
-			logdir = args.writebytes
+			logdir = args.writebytes				# use requested logdir
 		else:
-			logdir = "."
+			logdir = "."						# instead fallback to cwd
 
-	if not args.outmode:
+	if not args.outmode:							# default out modes; meta+hex
 		flags['m'] = 1
 		flags['h'] = 1
 	else:
@@ -468,31 +469,31 @@ def main():
 			elif mode == "raw": flags['r'] = 1
 
 	try:
-                if args.ares:
-                        flags['C'] = 1
-                        flags['S'] = 1
-                        for a in args.ares:
-                                args.cres.append(a)
-                                args.sres.append(a)
+                if args.ares:							# any inspection requested
+                        flags['C'] = 1						# enable flag
+                        flags['S'] = 1						# enable STC inspection
+                        for a in args.ares:					# add any regexes to
+                                args.cres.append(a)				# CTS regexes list
+                                args.sres.append(a)				# and STC regexes list
 
-		if args.cres:
-			flags['C'] = 1
+		if args.cres:							# CTS inspection requested
+			flags['C'] = 1						# enable flag
 			cregexes = []
 			for c in args.cres:
-				cregexes.append(re.compile(c, reflags))
+				cregexes.append(re.compile(c, reflags))		# add compiled regexobj to CTS list
 
 		if args.sres:
 			flags['S'] = 1
 			sregexes = []
 			for s in args.sres:
-				sregexes.append(re.compile(s, reflags))
+				sregexes.append(re.compile(s, reflags))		# add compiled regexobj to STC list
 
                 if not cregexes and not sregexes:
 			print "[-] Need a regex expression."
 			print "[-] Use direction flags [CSA] to specify one."
 			sys.exit(1)
 
-		dumpargsstats(args)						# show current arguments stats
+		dumpargsstats(args)						# show current session's arguments stats
 
 		nids.init()							# initialize NIDS
 		nids.register_ip(handleip)					# register ip callback handler
@@ -516,7 +517,7 @@ def main():
 		print "[-] Exception: %s" % ex
 		sys.exit(1)
 
-	exitwithstats()
+	exitwithstats()								# done parsing; exit with stats
 
 if __name__ == "__main__":
 	main()
