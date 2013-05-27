@@ -1,7 +1,7 @@
 flowsrch v0.1 - Ankur Tyagi (7h3rAm)
 Juniper Networks - Security Research Group
 
-A Flowgrep-like tool for network traffic inspection. It uses pynids to defragment IP/reassemble TCP packets. Such flows are then inspected using Python's "re" module that supports PCRE-like patterns, case-insensitive, invert and multiline matches, etc. Match scope could be limited through BPF expressions or via packets/streams/bytes inspection limit flags. Flows could also be logged to files in addition to being dumped on stdout. A few useful output modes help with further anaylysis.
+A Flowgrep-like tool for network traffic inspection. It uses pynids to defragment IP/reassemble TCP packets. Such flows are then inspected using Python's "re" module that supports PCRE-like patterns, case-insensitive, invert and multiline matches, etc. Match scope could be limited through BPF expressions or via packets/streams/bytes inspection limit flags. Flows could be logged to files in addition to being dumped on stdout. A few useful output modes help with further analysis.
 
 You could request inspection per direction or for both CTS and STC directions. However, each pattern is inspected only once per stream, per direction. For multiple patterns, matching happens independently and as such previous match results won't affect subsequent matches. For UDP, since there is no flow to search upon, matches happen over individual packet payloads.
 
