@@ -1,4 +1,4 @@
-#!/usr/bin/env python2 
+#!/usr/bin/env python2
 
 __author__	= "Ankur Tyagi (7h3rAm)"
 __email__ 	= "7h3rAm [at] gmail [dot] com"
@@ -59,7 +59,7 @@ def handleudp(addrs, payload, pkt):
 
 	fregexes = cregexes + sregexes						# CTS-STC is all same, use just one list
 
-	for regexobj in fregexes:	
+	for regexobj in fregexes:
 		for match in regexobj.finditer(finalpayload):			# match regex and generate iterable match object
 			matched = 1						# match found? start iterating
 			if not flags['v']:					# invert match is not requested

@@ -6,5 +6,7 @@
 [x] support for multiple patterns
 [x] out modes: quite, meta, hex, ascii, raw (+write)
 [x] write/append matched packets/streams to a file
+[ ] out modes should use colors to highlight matched bytes (only stdout is a tty).
 [ ] write matched packets/streams to a pcap file (like in py-greppcap)
+[ ] add snort-like content modifiers (offset-depth, distance-within)
 
