@@ -1,6 +1,1 @@
-[x] matched @ [...:...]
-                    ^ should show the regex matched start/end offsets and not consider display length restrictions.
-[x] -T42 : fails (off-by-one)
-[ ] excessive 00 bytes. will have to experiment with discard a bit further.
-[ ] few test pcaps fail on .* regex. use tcpdump/chopshop to further analyze.
-
+killtcp, is it working?
