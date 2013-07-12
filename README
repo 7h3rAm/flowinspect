@@ -1,54 +1,83 @@
-flowsrch v0.1 - Ankur Tyagi (7h3rAm)
+flowinspect v0.1 - Ankur Tyagi (7h3rAm)
 Juniper Networks - Security Research Group
 
-A Flowgrep-like tool for network traffic inspection. It uses pynids to defragment IP/reassemble TCP packets. Such flows are then inspected using Python's "re" module that supports PCRE-like patterns, case-insensitive, invert and multiline matches, etc. Match scope could be limited through BPF expressions or via packets/streams/bytes inspection limit flags. Flows could be logged to files in addition to being dumped on stdout. A few useful output modes help with further analysis.
 
-You could request inspection per direction or for both CTS and STC directions. However, each pattern is inspected only once per stream, per direction. For multiple patterns, matching happens independently and as such previous match results won't affect subsequent matches. For UDP, since there is no flow to search upon, matches happen over individual packet payloads.
+A network traffic inspection utility. It uses pynids to defragment IP and reassemble TCP packets (UDP is inspected on a per-packet basis). Resulting flows are then inspected using the "re2" module that supports PCRE-like patterns, case-insensitive, invert and multiline matches, etc. In case re2 is not installed, Python's re module is used as a fallback. Match scope could be limited through BPF expressions or via Snort-like offset-depth content modifiers or packets/streams inspection limit flags. Flows could be logged to files in addition to being dumped on stdout. A few useful output modes help with further analysis.
+
+Inspection could be requested with (multiple) regex patterns for CTS/STC/ANY directions. Inspection happens as traffic arrives and as such CTS matches (CTS regexes and ANY regexes) will be tested first. For TCP, first pattern match on a stream will be the last time it will be tested. For UDP, matches happen on a per-packet basis and as such for a stream, subsequent packets will be tested even after a match has already been found.
+
 
 HELP:
-usage: flowsrch.py [-h] (-d --device | -p --pcap) [-f --filter] [-C --cregex]
-                   [-S --sregex] [-A --aregex] [-i] [-v] [-m]
-                   [-T --maxinspstreams] [-U --maxinsppackets]
-                   [-B --maxinspbytes] [-t --maxdispstreams]
-                   [-u --maxdisppackets] [-b --maxdispbytes] [-w [logdir]]
-                   [-k] [-o {quite,meta,hex,print,raw}] [-V]
+	    ______              _                            __ 
+	   / __/ /___ _      __(_)___  _________  ___  _____/ /_
+	  / /_/ / __ \ | /| / / / __ \/ ___/ __ \/ _ \/ ___/ __/
+	 / __/ / /_/ / |/ |/ / / / / (__  ) /_/ /  __/ /__/ /_  
+	/_/ /_/\____/|__/|__/_/_/ /_/____/ .___/\___/\___/\__/  
+	                                /_/                     
+	
+flowinspect.py v0.2 - A tool for network traffic inspection
+Ankur Tyagi (7h3rAm) @ Juniper Networks Security Research Group
+
+usage: flowinspect.py [-h] (-p --pcap | -d --device) [-c --cregex]
+                      [-s --sregex] [-a --aregex] [-i] [-m] [-O --offset]
+                      [-D --depth] [-T --maxinspstreams] [-U --maxinsppackets]
+                      [-t --maxdispstreams] [-u --maxdisppackets]
+                      [-b --maxdispbytes] [-w [logdir]]
+                      [-o {quite,meta,hex,print,raw}] [-f --bpf] [-v] [-k]
+                      [-V] [-L]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -d --device           listening device
   -p --pcap             input pcap file
-  -f --filter           BPF expression
-  -C --cregex           regex to match against client stream
-  -S --sregex           regex to match against server stream
-  -A --aregex           regex to match against any stream
+  -d --device           listening device
+
+direction_flags:
+  -c --cregex           regex to match against client stream
+  -s --sregex           regex to match against server stream
+  -a --aregex           regex to match against any stream
+
+regex_flags:
   -i                    ignore case
-  -v                    invert match
   -m                    multiline match
+
+content_modifiers:
+  -O --offset           bytes to skip before matching
+  -D --depth            bytes to look at while matching (starting from offset)
+
+inspection_limits:
   -T --maxinspstreams   max streams to inspect
   -U --maxinsppackets   max packets to inspect
-  -B --maxinspbytes     max bytes to inspect
+
+display_limits:
   -t --maxdispstreams   max streams to display
   -u --maxdisppackets   max packets to display
   -b --maxdispbytes     max bytes to display
+
+out_options:
   -w [logdir]           write matching packets/streams
-  -k                    kill matching TCP stream
   -o {quite,meta,hex,print,raw}
                         match output mode
-  -V                    show program's version number and exit
+
+misc_options:
+  -f --bpf              BPF expression
+  -v                    invert match
+  -k                    kill matching TCP stream
+  -V                    verbose output
+  -L                    enable linemode (disables inspection)
 
 
 EXAMPLES:
 1. Look at HTTP sessions:
-# ./flowsrch.py -d eth0 -C "^(GET|POST|HEAD|PUT).*" -f "tcp and port 80" -o ascii
+# ./flowinspect.py -d eth0 -c "^(GET|POST|HEAD|PUT).*" -f "tcp and port 80" -o print
 
 2. Stop Metasploit .jar downloads:
-# ./flowsrch.py -d eth0 -S "PK\x03\x04.*metasploit" -k
+# ./flowinspect.py -d eth0 -s "PK\x03\x04.*metasploit" -k
 
 3. Quickly scan for Blackhole Exploit Kit infections (enable multiline match and restrict display to max 64B):
-# ./flowsrch.py -d eth0 -C "/forum/links/(column|news)\.php\?\w+=(\d\w:?)+" -mb64
+# ./flowinspect.py -d eth0 -c "/forum/links/(column|news)\.php\?\w+=(\d\w:?)+" -mb64
 
 4. Inspect HTTP streams for Metasploit ie_cgenericelement_uaf exploit (CVE-2013-1347):
-# ./flowsrch.py -p msfiecgenericelement.pcap -S "CollectGarbage\(\);.*mstime_malloc\({shellcode:magenta, heapBlockSize:0x38, objId:"myanim"}\);" -f "not udp"
+# ./flowinspect.py -p msfiecgenericelement.pcap -s "CollectGarbage\(\);.*mstime_malloc\({shellcode:magenta, heapBlockSize:0x38, objId:"myanim"}\);" -f "not udp"
 
 
 INSTALLATION:
