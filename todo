@@ -1,15 +1,21 @@
-[x] invert match
-[x] ignore 0 byte matches
 [x] tcp.kill
+[x] invert match
+[x] prefer re2 over re
+[x] ignore 0 byte matches
 [x] disable inspection - linemode
-[x] stats (longest/shortest match and packet/stream #)
-[x] support for different cts, stc and any patterns
 [x] support for multiple patterns
-[x] out modes: quite, meta, hex, ascii, raw (+write)
 [x] write/append matched packets/streams to a file
 [x] add snort-like content modifiers (offset-depth)
+[x] support for different cts, stc and any patterns
+[x] out modes: quite, meta, hex, ascii, raw (+write)
+[x] stats (longest/shortest match and packet/stream #)
 [x] stop tracking a stream when a match is found (tcp.collect = 0)
-[ ] out modes should use colors (only when stdout is a tty) to highlight matched bytes
-[ ] write matched packets/streams to a pcap file (like in py-greppcap)
-[ ] prefer re2 over re
+[ ] pcap write (with mods to header fields, regex replace, ...)
+[ ] inspection modes:
+	[ ] search
+	[x] regex
+	[ ] libemu
+	[ ] yara (peid/clamav)
+[ ] udp stream-based inspection
+[ ] ip/tcp/udp header checks
 
