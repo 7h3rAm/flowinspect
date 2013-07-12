@@ -15,11 +15,9 @@ def hexdump(data, length=16, sep='.'):
 	for c in xrange(0, len(data), length):
 		chars = data[c:c+length]
 		hex = ' '.join(["%02x" % ord(x) for x in chars])
-#		if len(hex) > 24:
-#		hex = "%s %s" % (hex[:24], hex[24:])
 		printablechars = ''.join(["%s" % ((ord(x) <= 127 and FILTER[ord(x)]) or sep) for x in chars])
 		lines.append("%08x:  %-*s  |%s|\n" % (c, length*3, hex, printablechars))
-	print ''.join(lines),
+	print ''.join(lines)
 
 
 # ascii printable filter for raw bytes

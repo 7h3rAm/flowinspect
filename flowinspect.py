@@ -274,7 +274,6 @@ def showudpmatches(data):
 					configopts['maxdisppackets'])
 		return
 
-	print
 	if 'meta' in configopts['outmodes']:
 		print "[MATCH] (%08d/%08d) [UDP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB" % (
 				configopts['insppacketct'],
@@ -292,7 +291,6 @@ def showudpmatches(data):
 	if 'print' in configopts['outmodes']: printable(data[:maxdispbytes])
 	if 'raw' in configopts['outmodes']: print data[:maxdispbytes]
 	if 'hex' in configopts['outmodes']: hexdump(data[:maxdispbytes])
-	print
 
 	configopts['disppacketct'] += 1
 
@@ -620,7 +618,6 @@ def showtcpmatches(data):
 					configopts['maxdispstreams'])
 		return
 
-	print
 	if 'meta' in configopts['outmodes']:
 		print "[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB" % (
 				configopts['inspstreamct'],
@@ -638,7 +635,6 @@ def showtcpmatches(data):
 	if 'print' in configopts['outmodes']: printable(data[:maxdispbytes])
 	if 'raw' in configopts['outmodes']: print data[:maxdispbytes]
 	if 'hex' in configopts['outmodes']: hexdump(data[:maxdispbytes])
-	print
 
 	configopts['dispstreamct'] += 1
 
@@ -801,7 +797,7 @@ def main():
 
 	direction_flags = parser.add_argument_group('direction_flags')
 	direction_flags.add_argument(
-									'-C',
+									'-c',
 									metavar='--cregex',
 									dest='cres',
 									default=[],
@@ -809,7 +805,7 @@ def main():
 									required=False,
 									help='regex to match against client stream')
 	direction_flags.add_argument(
-									'-S',
+									'-s',
 									metavar='--sregex',
 									dest='sres',
 									default=[],
@@ -817,7 +813,7 @@ def main():
 									required=False,
 									help='regex to match against server stream')
 	direction_flags.add_argument(
-									'-A',
+									'-a',
 									metavar='--aregex',
 									dest='ares',
 									default=[],

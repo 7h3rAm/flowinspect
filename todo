@@ -16,6 +16,6 @@
 	[x] regex
 	[ ] libemu
 	[ ] yara (peid/clamav)
-[ ] udp stream-based inspection
+[ ] udp stream-based inspection (cts/stc/any)
 [ ] ip/tcp/udp header checks
 
