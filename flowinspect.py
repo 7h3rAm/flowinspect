@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 __author__	= 'Ankur Tyagi (7h3rAm)'
-__email__ 	= '7h3rAm [at] gmail [dot] com'
-__version__ = '0.2'
-__license__ = 'CC-BY-SA 3.0'
-__status__ 	= 'Development'
+__email__	= '7h3rAm [at] gmail [dot] com'
+__version__	= '0.2'
+__license__	= 'CC-BY-SA 3.0'
+__status__	= 'Development'
 
 
 import os, sys, argparse, datetime
@@ -162,14 +162,14 @@ def handleudp(addr, payload, pkt):
 		if configopts['udpdone']:
 			if configopts['tcpdone']:
 				if configopts['verbose']:
-					print "[DEBUG] handleudp - Done inspecting max packets (%d) and max streams (%d), \
-							preparing for exit" % (
+					print '[DEBUG] handleudp - Done inspecting max packets (%d) and max streams (%d), \
+							preparing for exit' % (
 							configopts['maxinsppackets'],
 							configopts['maxinspstreams'])
 				exitwithstats()
 			else:
 				if configopts['verbose']:
-					print "[DEBUG] handleudp - Ignoring packet %s:%s - %s:%s (insppacketct: %d == maxinsppackets: %d)" % (
+					print '[DEBUG] handleudp - Ignoring packet %s:%s - %s:%s (insppacketct: %d == maxinsppackets: %d)' % (
 							src,
 							sport,
 							dst,
@@ -198,7 +198,7 @@ def handleudp(addr, payload, pkt):
 		matchstats['matchsize'] = matchstats['end'] - matchstats['start']
 		matchstats['direction'] = direction
 		matchstats['directionflag'] = directionflag
-		if configopts['verbose']: print "[DEBUG] handleudp - [UDP#%08d] Skipping inspection as linemode is enabled." % (
+		if configopts['verbose']: print '[DEBUG] handleudp - [UDP#%08d] Skipping inspection as linemode is enabled.' % (
 											configopts['packetct'])
 		showudpmatches(data[matchstats['start']:matchstats['end']])
 		return
@@ -220,7 +220,7 @@ def handleudp(addr, payload, pkt):
 	inspdatalen = len(inspdata)
 
 	if configopts['verbose']:
-		print "[DEBUG] handleudp - [UDP#%08d] Initiating inspection on %s[%d:%d] - %dB (RegEx #:%d)" % (
+		print '[DEBUG] handleudp - [UDP#%08d] Initiating inspection on %s[%d:%d] - %dB (RegEx #:%d)' % (
 				configopts['packetct'],
 				direction,
 				offset,
@@ -274,7 +274,7 @@ def showudpmatches(data):
 	else: maxdispbytes = len(data)
 
 	if configopts['writelogs']:
-		proto = "UDP"
+		proto = 'UDP'
 		writetofile(proto, configopts['packetct'], src, sport, dst, dport, data)
 
 		if configopts['verbose']:
@@ -291,7 +291,7 @@ def showudpmatches(data):
 
 	if 'quite' in configopts['outmodes']:
 		if configopts['verbose']:
-			print "[DEBUG] showudpmatches - [UDP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB" % (
+			print '[DEBUG] showudpmatches - [UDP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
 					configopts['packetct'],
 					src,
 					sport,
@@ -312,7 +312,7 @@ def showudpmatches(data):
 		return
 
 	if 'meta' in configopts['outmodes']:
-		print "[MATCH] (%08d/%08d) [UDP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB" % (
+		print '[MATCH] (%08d/%08d) [UDP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
 				configopts['insppacketct'],
 				configopts['packetmatches'],
 				configopts['packetct'],
@@ -338,7 +338,7 @@ def inspect(proto, id, data, datalen, regexes, addr):
 	((src, sport), (dst, dport)) = addr
 
 	if configopts['verbose']:
-		print "[DEBUG] inspect - [%s#%08d] Received %dB for inspection from %s:%s - %s:%s against %d regex pattern(s)" % (
+		print '[DEBUG] inspect - [%s#%08d] Received %dB for inspection from %s:%s - %s:%s against %d regex pattern(s)' % (
 				proto,
 				id,
 				datalen,
@@ -356,7 +356,7 @@ def inspect(proto, id, data, datalen, regexes, addr):
 			matchstats['end'] = matchstats['match'].end()
 			matchstats['matchsize'] = matchstats['end'] - matchstats['start']
 			if configopts['verbose']:
-				print "[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s matches \'%s\'" % (
+				print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s matches \'%s\'' % (
 						proto,
 						id,
 						src,
@@ -374,7 +374,7 @@ def inspect(proto, id, data, datalen, regexes, addr):
 				return False
 
 			if configopts['verbose']:
-				print "[DEBUG] inspect - [%s#%08d] - Stream %s:%s - %s:%s did not match \'%s\'" % (
+				print '[DEBUG] inspect - [%s#%08d] - Stream %s:%s - %s:%s did not match \'%s\'' % (
 						proto,
 						id,
 						src,
@@ -399,8 +399,8 @@ def handletcp(tcp):
 			if configopts['udpdone']:
 				if configopts['verbose']:
 					if addrkey in opentcpstreams: id = opentcpstreams[addrkey]['id']
-					print "[DEBUG] handletcp - [TCP#%08d] Done inspecting max packets (%d) and max streams (%d), \
-							preparing for exit" % (
+					print '[DEBUG] handletcp - [TCP#%08d] Done inspecting max packets (%d) and max streams (%d), \
+							preparing for exit' % (
 							id,
 							configopts['maxinsppackets'],
 							configopts['maxinspstreams'])
@@ -408,7 +408,7 @@ def handletcp(tcp):
 			else:
 				if configopts['verbose']:
 					if addrkey in opentcpstreams: id = opentcpstreams[addrkey]['id']
-					print "[DEBUG] handletcp - [TCP#%08d] Ignoring stream %s:%s - %s:%s (inspstreamct: %d == maxinspstreams: %d)" % (
+					print '[DEBUG] handletcp - [TCP#%08d] Ignoring stream %s:%s - %s:%s (inspstreamct: %d == maxinspstreams: %d)' % (
 							id,
 							src,
 							sport,
@@ -429,11 +429,14 @@ def handletcp(tcp):
 			opentcpstreams.update({addrkey:{
 											'id':configopts['streamct'],
 											'totdatasize':0,
+											'insppackets':0,
+											'ctspacketlendict':{},
+											'stcpacketlendict':{}
 										}
 								})
 
 			if configopts['verbose']:
-				print "[DEBUG] handletcp - [TCP#%08d] %s:%s - %s:%s [SYN] (TRACKED: %d)" % (
+				print '[DEBUG] handletcp - [TCP#%08d] %s:%s - %s:%s [SYN] (TRACKED: %d)' % (
 						opentcpstreams[addrkey]['id'],
 						src,
 						sport,
@@ -445,7 +448,7 @@ def handletcp(tcp):
 			tcp.server.collect = 1
 			tcp.client.collect = 1
 			if configopts['verbose']:
-				print "[DEBUG] handletcp - [TCP#%08d] Enabled both CTS and STC data collection for %s:%s - %s:%s (linemode)" % (
+				print '[DEBUG] handletcp - [TCP#%08d] Enabled both CTS and STC data collection for %s:%s - %s:%s (linemode)' % (
 						opentcpstreams[addrkey]['id'],
 						src,
 						sport,
@@ -455,7 +458,7 @@ def handletcp(tcp):
 			if len(configopts['ctsregexes']) > 0:
 				tcp.server.collect = 1
 				if configopts['verbose']:
-					print "[DEBUG] handletcp - [TCP#%08d] Enabled CTS data collection for %s:%s - %s:%s" % (
+					print '[DEBUG] handletcp - [TCP#%08d] Enabled CTS data collection for %s:%s - %s:%s' % (
 						opentcpstreams[addrkey]['id'],
 						src,
 						sport,
@@ -464,7 +467,7 @@ def handletcp(tcp):
 			if len(configopts['stcregexes']) > 0:
 				tcp.client.collect = 1
 				if configopts['verbose']:
-					print "[DEBUG] handletcp - [TCP#%08d] Enabled STC data collection for %s:%s - %s:%s" % (
+					print '[DEBUG] handletcp - [TCP#%08d] Enabled STC data collection for %s:%s - %s:%s' % (
 						opentcpstreams[addrkey]['id'],
 						src,
 						sport,
@@ -499,7 +502,7 @@ def handletcp(tcp):
 				regexes.append(regex)
 
 		if configopts['verbose']:
-			print "[DEBUG] handletcp - [TCP#%08d] %s:%s %s %s:%s [%dB] (CTS: %d | STC: %d | TOT: %d)" % (
+			print '[DEBUG] handletcp - [TCP#%08d] %s:%s %s %s:%s [%dB] (CTS: %d | STC: %d | TOT: %d)' % (
 					opentcpstreams[addrkey]['id'],
 					src,
 					sport,
@@ -521,7 +524,7 @@ def handletcp(tcp):
 			matchstats['matchsize'] = matchstats['end'] - matchstats['start']
 			matchstats['direction'] = direction
 			matchstats['directionflag'] = directionflag
-			if configopts['verbose']: print "[DEBUG] handletcp - [TCP#%08d] Skipping inspection as linemode is enabled." % (
+			if configopts['verbose']: print '[DEBUG] handletcp - [TCP#%08d] Skipping inspection as linemode is enabled.' % (
 												opentcpstreams[addrkey]['id'])
 			showtcpmatches(data[matchstats['start']:matchstats['end']])
 			return
@@ -543,7 +546,7 @@ def handletcp(tcp):
 		inspdatalen = len(inspdata)
 
 		if configopts['verbose']:
-			print "[DEBUG] handletcp - [TCP#%08d] Initiating inspection on %s[%d:%d] - %dB (RegEx #:%d)" % (
+			print '[DEBUG] handletcp - [TCP#%08d] Initiating inspection on %s[%d:%d] - %dB (RegEx #:%d)' % (
 					opentcpstreams[addrkey]['id'],
 					direction,
 					offset,
@@ -552,6 +555,9 @@ def handletcp(tcp):
 					len(regexes))
 
 		matched = inspect('TCP', opentcpstreams[addrkey]['id'], inspdata, inspdatalen, regexes, addrkey)
+		opentcpstreams[addrkey]['insppackets'] += 1
+		if direction == 'CTS': opentcpstreams[addrkey]['ctspacketlendict'].update({ opentcpstreams[addrkey]['insppackets']:inspdatalen })
+		else: opentcpstreams[addrkey]['stcpacketlendict'].update({ opentcpstreams[addrkey]['insppackets']:inspdatalen })
 
 		if not matched and configopts['invertmatch']:
 			showmatch = True
@@ -589,17 +595,19 @@ def handletcp(tcp):
 			matchstats['addr'] = addrkey
 			showtcpmatches(data[matchstats['start']:matchstats['end']])
 			del opentcpstreams[addrkey]
+		else:
+			opentcpstreams[addrkey]['previnspbufsize'] = inspdatalen
 
 	if tcp.nids_state in endstates:
 		if addrkey in opentcpstreams:
 			id = opentcpstreams[addrkey]['id']
 			del opentcpstreams[addrkey]
 			if configopts['verbose']:
-				if tcp.nids_state == nids.NIDS_CLOSE: state = "FIN"
-				elif tcp.nids_state == nids.NIDS_TIMED_OUT: state = "TIMED_OUT"
-				elif tcp.nids_state == nids.NIDS_RESET: state = "RST"
-				else: state = "UNKNOWN"
-				print "[DEBUG] handletcp - [TCP#%08d] %s:%s - %s:%s [%s] (TRACKED: %d)" % (
+				if tcp.nids_state == nids.NIDS_CLOSE: state = 'FIN'
+				elif tcp.nids_state == nids.NIDS_TIMED_OUT: state = 'TIMED_OUT'
+				elif tcp.nids_state == nids.NIDS_RESET: state = 'RST'
+				else: state = 'UNKNOWN'
+				print '[DEBUG] handletcp - [TCP#%08d] %s:%s - %s:%s [%s] (TRACKED: %d)' % (
 						id,
 						src,
 						sport,
@@ -618,7 +626,7 @@ def showtcpmatches(data):
 	else: maxdispbytes = len(data)
 
 	if configopts['writelogs']:
-		proto = "TCP"
+		proto = 'TCP'
 		writetofile(proto, opentcpstreams[matchstats['addr']]['id'], src, sport, dst, dport, data)
 
 		if configopts['verbose']:
@@ -635,7 +643,7 @@ def showtcpmatches(data):
 
 	if 'quite' in configopts['outmodes']:
 		if configopts['verbose']:
-			print "[DEBUG] showtcpmatches - [TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB" % (
+			print '[DEBUG] showtcpmatches - [TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
 					opentcpstreams[matchstats['addr']]['id'],
 					src,
 					sport,
@@ -656,7 +664,7 @@ def showtcpmatches(data):
 		return
 
 	if 'meta' in configopts['outmodes']:
-		print "[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB" % (
+		print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s matches \'%s\'' % (
 				configopts['inspstreamct'],
 				configopts['streammatches'],
 				opentcpstreams[matchstats['addr']]['id'],
@@ -665,10 +673,28 @@ def showtcpmatches(data):
 				matchstats['directionflag'],
 				dst,
 				dport,
-				getregexpattern(matchstats['regex']),
+				getregexpattern(matchstats['regex']))
+
+		if matchstats['direction'] == 'CTS': packetlendict = opentcpstreams[matchstats['addr']]['ctspacketlendict']
+		else: packetlendict = opentcpstreams[matchstats['addr']]['stcpacketlendict']
+			
+		startpacket = 0
+		endpacket = 0
+		for (pktid, pktlen) in packetlendict.items():
+			if startpacket == 0 and matchstats['start'] <= pktlen:
+				startpacket = pktid
+		endpacket = pktid
+
+		print '[MATCH] (%08d/%08d) [TCP#%08d] match @ [%d:%d] - %dB | packet[%d] - packet[%d]' % (
+				configopts['inspstreamct'],
+				configopts['streammatches'],
+				opentcpstreams[matchstats['addr']]['id'],
 				matchstats['start'],
 				matchstats['end'],
-				matchstats['matchsize'])
+				matchstats['matchsize'],
+				startpacket,
+				endpacket)
+
 	if 'print' in configopts['outmodes']: printable(data[:maxdispbytes])
 	if 'raw' in configopts['outmodes']: print data[:maxdispbytes]
 	if 'hex' in configopts['outmodes']: hexdump(data[:maxdispbytes])
@@ -727,7 +753,7 @@ def dumpopenstreams():
 
 	if len(openudpstreams) > 0:
 		print
-		print "[DEBUG] Dumping open/tracked UDP streams: %d" % (len(openudpstreams))
+		print '[DEBUG] Dumping open/tracked UDP streams: %d' % (len(openudpstreams))
 
 		for (key, value) in openudpstreams.items():
 			id = value['id']
@@ -747,13 +773,13 @@ def dumpopenstreams():
 
 	if len(opentcpstreams) > 0:
 		print
-		print "[DEBUG] Dumping open/tracked TCP streams: %d" % (len(opentcpstreams))
+		print '[DEBUG] Dumping open/tracked TCP streams: %d' % (len(opentcpstreams))
 
 		for (key, value) in opentcpstreams.items():
 			((src, sport), (dst, dport)) = key
 			id = value['id']
 			datasize = value['totdatasize']
-			print "[DEBUG] [%08d] %s:%s - %s:%s [%dB]" % (id, src, sport, dst, dport, datasize)
+			print '[DEBUG] [%08d] %s:%s - %s:%s [%dB]' % (id, src, sport, dst, dport, datasize)
 
 	print
 
@@ -781,9 +807,9 @@ def dumpargsstats(configopts):
 	print ']'
 
 	print '%-30s' % '[DEBUG] RE stats:', ; print '[ Engine: \'%s\' | Flags: %d - (' % (reengine, configopts['reflags']),
-	if configopts['igncase']: print "ignorecase",
-	if configopts['multiline']: print "multiline",
-	print ") ]"
+	if configopts['igncase']: print 'ignorecase',
+	if configopts['multiline']: print 'multiline',
+	print ') ]'
 
 	print '%-30s' % '[DEBUG] Inspection limits:',
 	print '[ Streams: %d | Packets: %d | Offset: %d | Depth: %d ]' % (
@@ -824,14 +850,14 @@ def dumpargsstats(configopts):
 def main():
 	global configopts
 
-	banner = """\
+	banner = '''\
 	    ______              _                            __ 
 	   / __/ /___ _      __(_)___  _________  ___  _____/ /_
 	  / /_/ / __ \ | /| / / / __ \/ ___/ __ \/ _ \/ ___/ __/
 	 / __/ / /_/ / |/ |/ / / / / (__  ) /_/ /  __/ /__/ /_  
 	/_/ /_/\____/|__/|__/_/_/ /_/____/ .___/\___/\___/\__/  
 	                                /_/                     
-	"""
+	'''
 	print '%s' % (banner)
 
 	print '%s v%s - %s' % (configopts['name'], configopts['version'], configopts['desc'])
@@ -1113,8 +1139,8 @@ def main():
 	if not configopts['ctsregexes'] and not configopts['stcregexes'] and not configopts['linemode']:
 		configopts['linemode'] = True
 		if configopts['verbose']:
-			print "[DEBUG] Inspection requires direction flags, none found!"
-			print "[DEBUG] Fallback - linemode enabled"
+			print '[DEBUG] Inspection requires direction flags, none found!'
+			print '[DEBUG] Fallback - linemode enabled'
 			print
 
 
@@ -1142,10 +1168,10 @@ def main():
 		print
 		print '[-] NIDS error: %s' % nx
 		sys.exit(1)
-#	except Exception, ex:
-#		print
-#		print '[-] Exception: %s' % ex
-#		sys.exit(1)
+	except Exception, ex:
+		print
+		print '[-] Exception: %s' % ex
+		sys.exit(1)
 
 	exitwithstats()								
 

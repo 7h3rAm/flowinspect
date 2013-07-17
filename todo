@@ -17,5 +17,6 @@
 	[ ] libemu
 	[ ] yara (peid/clamav)
 [x] udp stream tracking (cts/stc/any)
+[x] show matching tcp packet ids (handy when pattern spans many packets)
 [ ] ip/tcp/udp header checks
 
