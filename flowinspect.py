@@ -683,12 +683,13 @@ def showtcpmatches(data):
 		for (pktid, pktlen) in packetlendict.items():
 			if startpacket == 0 and matchstats['start'] <= pktlen:
 				startpacket = pktid
-		endpacket = pktid
+			endpacket = pktid
 
-		print '[MATCH] (%08d/%08d) [TCP#%08d] match @ [%d:%d] - %dB | packet[%d] - packet[%d]' % (
+		print '[MATCH] (%08d/%08d) [TCP#%08d] match @ %s[%d:%d] - %dB | packet[%d] - packet[%d]' % (
 				configopts['inspstreamct'],
 				configopts['streammatches'],
 				opentcpstreams[matchstats['addr']]['id'],
+				matchstats['direction'],
 				matchstats['start'],
 				matchstats['end'],
 				matchstats['matchsize'],
@@ -1168,10 +1169,10 @@ def main():
 		print
 		print '[-] NIDS error: %s' % nx
 		sys.exit(1)
-	except Exception, ex:
-		print
-		print '[-] Exception: %s' % ex
-		sys.exit(1)
+#	except Exception, ex:
+#		print
+#		print '[-] Exception: %s' % ex
+#		sys.exit(1)
 
 	exitwithstats()								
 
