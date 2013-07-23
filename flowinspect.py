@@ -9,23 +9,27 @@ __status__	= 'Development'
 
 import os, sys, argparse, datetime
 
-reengine = 're2'
-if reengine == 're2':
-	try: import re2 as re
-	except ImportError, ex:
-		reengine = 're'
-		print '[!] Import failed: %s' % ex
-
-if reengine == 're':
-		try: import re
-		except ImportError, ex: print '[!] Import failed: %s' % ex
-
-
 try: import nids
 except ImportError, ex:
 	print '[-] Import failed: %s' % ex
 	print '[-] Cannot proceed. Exiting.'
 	sys.exit(1)
+
+
+try:
+	import re2 as re
+	regexengine = 're2'
+except importError, ex:
+	import re
+	regexengine = 're'
+
+try:
+	import pylibemu as emu
+	shellcodeengine = 'pylibemu'
+except ImportError, ex:
+	print '[!] Import failed: %s' % (ex)
+	shellcodeengine = None
+
 
 sys.dont_write_bytecode = True
 from utils import *
@@ -71,6 +75,8 @@ configopts = {
 			'udpdone':False,
 			'tcpdone':False,
 
+			'inspectionmodes':[],
+
 			'reflags':0,
 			'igncase':False,
 			'multiline':False,
@@ -84,6 +90,9 @@ configopts = {
 			'writelogs':False,
 			'linemode':False,
 
+			'regexengine':None,
+			'shellcodeengine':None
+
 			}
 
 matchstats = {
@@ -93,7 +102,8 @@ matchstats = {
 			'end':0,
 			'matchsize':0,
 			'direction':'',
-			'directionflag':''
+			'directionflag':'',
+			'detectiontype':None
 			}
 
 openudpstreams = {}
@@ -333,45 +343,47 @@ def showudpmatches(data):
 
 
 def inspect(proto, id, data, datalen, regexes, addr):
-	global configopts, matchstats
+	global configopts, matchstats, regexengine, shellcodeengine
 
 	((src, sport), (dst, dport)) = addr
 
 	if configopts['verbose']:
-		print '[DEBUG] inspect - [%s#%08d] Received %dB for inspection from %s:%s - %s:%s against %d regex pattern(s)' % (
+		print '[DEBUG] inspect - [%s#%08d] Received %dB for inspection from %s:%s - %s:%s' % (
 				proto,
 				id,
 				datalen,
 				src,
 				sport,
 				dst,
-				dport,
-				len(regexes))
+				dport)
 
-	for regex in regexes:
-		matchstats['match'] = regex.search(data)
-		if matchstats['match']:
-			matchstats['regex'] = regex
-			matchstats['start'] = matchstats['match'].start()
-			matchstats['end'] = matchstats['match'].end()
-			matchstats['matchsize'] = matchstats['end'] - matchstats['start']
-			if configopts['verbose']:
-				print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s matches \'%s\'' % (
-						proto,
-						id,
-						src,
-						sport,
-						dst,
-						dport,
-						getregexpattern(regex))
-			return True
-		else:
-			if configopts['invertmatch']:
+	if 'regex' in configopts['inspectionmodes']:
+		for regex in regexes:
+			matchstats['match'] = regex.search(data)
+			if matchstats['match']:
+				matchstats['detectiontype'] = 'regex'
 				matchstats['regex'] = regex
-				matchstats['start'] = 0
-				matchstats['end'] = len(data)
+				matchstats['start'] = matchstats['match'].start()
+				matchstats['end'] = matchstats['match'].end()
 				matchstats['matchsize'] = matchstats['end'] - matchstats['start']
-				return False
+				if configopts['verbose']:
+					print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s matches \'%s\'' % (
+							proto,
+							id,
+							src,
+							sport,
+							dst,
+							dport,
+							getregexpattern(regex))
+				return True
+			else:
+				if configopts['invertmatch']:
+					matchstats['detectiontype'] = 'regex'
+					matchstats['regex'] = regex
+					matchstats['start'] = 0
+					matchstats['end'] = len(data)
+					matchstats['matchsize'] = matchstats['end'] - matchstats['start']
+					return True
 
 			if configopts['verbose']:
 				print '[DEBUG] inspect - [%s#%08d] - Stream %s:%s - %s:%s did not match \'%s\'' % (
@@ -382,6 +394,27 @@ def inspect(proto, id, data, datalen, regexes, addr):
 						dst,
 						dport,
 						getregexpattern(regex))
+
+	if 'shellcode' in configopts['inspectionmodes'] and shellcodeengine:
+		if configopts['verbose']: print '[DEBUG] inspect - [TCP#%08d] %s:%s - %s:%s contains shellcode' % (
+											id,
+											src,
+											sport,
+											dst,
+											dport)
+
+		emulator = emu.Emulator(1024)
+		offset = emulator.shellcode_getpc_test(data)
+		if offset < 0: offset = 0
+		emulator.prepare(data, offset)
+		if not emulator.test() and emulator.emu_profile_output:
+			emulator.free()
+			matchstats['detectiontype'] = 'shellcode'
+			matchstats['regex'] = re.compile('.*')
+			matchstats['start'] = 0
+			matchstats['end'] = len(data)
+			matchstats['matchsize'] = matchstats['end'] - matchstats['start']
+			return True
 
 	return False
 
@@ -444,11 +477,11 @@ def handletcp(tcp):
 						dport,
 						len(opentcpstreams))
 
-		if configopts['linemode']:
+		if configopts['linemode'] or 'shellcode' in configopts['inspectionmodes']:
 			tcp.server.collect = 1
 			tcp.client.collect = 1
 			if configopts['verbose']:
-				print '[DEBUG] handletcp - [TCP#%08d] Enabled both CTS and STC data collection for %s:%s - %s:%s (linemode)' % (
+				print '[DEBUG] handletcp - [TCP#%08d] Enabled both CTS and STC data collection for %s:%s - %s:%s' % (
 						opentcpstreams[addrkey]['id'],
 						src,
 						sport,
@@ -555,6 +588,7 @@ def handletcp(tcp):
 					len(regexes))
 
 		matched = inspect('TCP', opentcpstreams[addrkey]['id'], inspdata, inspdatalen, regexes, addrkey)
+
 		opentcpstreams[addrkey]['insppackets'] += 1
 		if direction == 'CTS': opentcpstreams[addrkey]['ctspacketlendict'].update({ opentcpstreams[addrkey]['insppackets']:inspdatalen })
 		else: opentcpstreams[addrkey]['stcpacketlendict'].update({ opentcpstreams[addrkey]['insppackets']:inspdatalen })
@@ -642,7 +676,7 @@ def showtcpmatches(data):
 					dport)
 
 	if 'quite' in configopts['outmodes']:
-		if configopts['verbose']:
+		if configopts['verbose'] and matchstats['detectiontype'] == 'regex':
 			print '[DEBUG] showtcpmatches - [TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
 					opentcpstreams[matchstats['addr']]['id'],
 					src,
@@ -664,16 +698,17 @@ def showtcpmatches(data):
 		return
 
 	if 'meta' in configopts['outmodes']:
-		print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s matches \'%s\'' % (
-				configopts['inspstreamct'],
-				configopts['streammatches'],
-				opentcpstreams[matchstats['addr']]['id'],
-				src,
-				sport,
-				matchstats['directionflag'],
-				dst,
-				dport,
-				getregexpattern(matchstats['regex']))
+		if matchstats['detectiontype'] == 'regex':
+			print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s matches \'%s\'' % (
+					configopts['inspstreamct'],
+					configopts['streammatches'],
+					opentcpstreams[matchstats['addr']]['id'],
+					src,
+					sport,
+					matchstats['directionflag'],
+					dst,
+					dport,
+					getregexpattern(matchstats['regex']))
 
 		if matchstats['direction'] == 'CTS': packetlendict = opentcpstreams[matchstats['addr']]['ctspacketlendict']
 		else: packetlendict = opentcpstreams[matchstats['addr']]['stcpacketlendict']
@@ -685,7 +720,7 @@ def showtcpmatches(data):
 				startpacket = pktid
 			endpacket = pktid
 
-		print '[MATCH] (%08d/%08d) [TCP#%08d] match @ %s[%d:%d] - %dB | packet[%d] - packet[%d]' % (
+		print '[MATCH] (%08d/%08d) [TCP#%08d] match @ %s[%d:%d] - %dB | packet[%d] - packet[%d] - (%s)' % (
 				configopts['inspstreamct'],
 				configopts['streammatches'],
 				opentcpstreams[matchstats['addr']]['id'],
@@ -694,7 +729,8 @@ def showtcpmatches(data):
 				matchstats['end'],
 				matchstats['matchsize'],
 				startpacket,
-				endpacket)
+				endpacket,
+				matchstats['detectiontype'])
 
 	if 'print' in configopts['outmodes']: printable(data[:maxdispbytes])
 	if 'raw' in configopts['outmodes']: print data[:maxdispbytes]
@@ -790,12 +826,20 @@ def handleip(pkt):
 
 
 def dumpargsstats(configopts):
+	global regexengine, shellcodeengine
+
 	print '%-30s' % '[DEBUG] Input pcap:', ; print '[ \'%s\' ]' % (configopts['pcap'])
 	print '%-30s' % '[DEBUG] Listening device:', ;print '[ \'%s\' ]' % (configopts['device']),
 	if configopts['killtcp']:
 		print '[ w/ \'killtcp\' ]'
 	else:
 		print
+
+	print '%-30s' % '[DEBUG] Inspection Modes:', ;print '[',
+	for mode in configopts['inspectionmodes']:
+		if mode == 'regex': print 'regex: %s' % (regexengine),
+		if mode == 'shellcode': print '| shellcode: %s' % (shellcodeengine),
+	print ']'
 
 	print '%-30s' % '[DEBUG] CTS regex:', ; print '[ %d |' % (len(configopts['ctsregexes'])),
 	for c in configopts['ctsregexes']:
@@ -807,7 +851,7 @@ def dumpargsstats(configopts):
 		print '\'%s\'' % getregexpattern(s),
 	print ']'
 
-	print '%-30s' % '[DEBUG] RE stats:', ; print '[ Engine: \'%s\' | Flags: %d - (' % (reengine, configopts['reflags']),
+	print '%-30s' % '[DEBUG] RE stats:', ; print '[ Flags: %d - (' % (configopts['reflags']),
 	if configopts['igncase']: print 'ignorecase',
 	if configopts['multiline']: print 'multiline',
 	print ') ]'
@@ -883,7 +927,7 @@ def main():
 									action='store',
 									help='listening device')
 
-	direction_flags = parser.add_argument_group('direction_flags')
+	direction_flags = parser.add_argument_group('RegEx per Direction')
 	direction_flags.add_argument(
 									'-c',
 									metavar='--cregex',
@@ -909,7 +953,7 @@ def main():
 									required=False,
 									help='regex to match against any stream')
 
-	regex_flags = parser.add_argument_group('regex_flags')
+	regex_flags = parser.add_argument_group('RegEx Flags')
 	regex_flags.add_argument(
 									'-i',
 									dest='igncase',
@@ -920,12 +964,12 @@ def main():
 	regex_flags.add_argument(
 									'-m',
 									dest='multiline',
-									default=False,
-									action='store_true',
+									default=True,
+									action='store_false',
 									required=False,
-									help='multiline match')
+									help='disable multiline match')
 
-	content_modifiers = parser.add_argument_group('content_modifiers')
+	content_modifiers = parser.add_argument_group('Content Modifiers')
 	content_modifiers.add_argument(
 									'-O',
 									metavar='--offset',
@@ -943,7 +987,7 @@ def main():
 									required=False,
 									help='bytes to look at while matching (starting from offset)')
 
-	inspection_limits = parser.add_argument_group('inspection_limits')
+	inspection_limits = parser.add_argument_group('Inspection Limits')
 	inspection_limits.add_argument(
 									'-T',
 									metavar='--maxinspstreams',
@@ -963,7 +1007,7 @@ def main():
 									required=False,
 									help='max packets to inspect')
 
-	display_limits = parser.add_argument_group('display_limits')
+	display_limits = parser.add_argument_group('Display Limits')
 	display_limits.add_argument(
 									'-t',
 									metavar='--maxdispstreams',
@@ -992,7 +1036,7 @@ def main():
 									required=False,
 									help='max bytes to display')
 
-	out_options = parser.add_argument_group('out_options')
+	out_options = parser.add_argument_group('Out Options')
 	out_options.add_argument(
 									'-w',
 									metavar='logdir',
@@ -1011,7 +1055,16 @@ def main():
 									required=False,
 									help='match output mode')
 
-	misc_options = parser.add_argument_group('misc_options')
+	misc_insp_modes = parser.add_argument_group('Misc. Inspection Modes:')
+	misc_insp_modes.add_argument(
+									'-S',
+									dest='shellcode',
+									default=False,
+									action='store_true',
+									required=False,
+									help='enable shellcode detection (libemu)')
+
+	misc_options = parser.add_argument_group('Misc. Options')
 	misc_options.add_argument(
 									'-f',
 									metavar='--bpf',
@@ -1073,14 +1126,17 @@ def main():
 		configopts['reflags'] |= re.DOTALL
 
 	if args.cres:
+		if 'regex' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('regex')
 		for c in args.cres:
 			configopts['ctsregexes'].append(re.compile(c, configopts['reflags']))
 
 	if args.sres:
+		if 'regex' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('regex')
 		for s in args.sres:
 			configopts['stcregexes'].append(re.compile(s, configopts['reflags']))
 
 	if args.ares:
+		if 'regex' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('regex')
 		for a in args.ares:
 			configopts['ctsregexes'].append(re.compile(a, configopts['reflags']))
 			configopts['stcregexes'].append(re.compile(a, configopts['reflags']))
@@ -1124,6 +1180,9 @@ def main():
 			elif mode == 'print': configopts['outmodes'].append('print')
 			elif mode == 'raw': configopts['outmodes'].append('raw')
 
+	if args.shellcode:
+		configopts['inspectionmodes'].append('shellcode')
+
 	if args.bpf:
 		configopts['bpf'] = args.bpf
 		nids.param('pcap_filter', configopts['bpf'])				
@@ -1137,13 +1196,12 @@ def main():
 	if args.linemode:
 		configopts['linemode'] = True
 
-	if not configopts['ctsregexes'] and not configopts['stcregexes'] and not configopts['linemode']:
+	if not configopts['inspectionmodes'] and not configopts['linemode']:
 		configopts['linemode'] = True
 		if configopts['verbose']:
-			print '[DEBUG] Inspection requires direction flags, none found!'
+			print '[DEBUG] Inspection requires one or more regex direction flags or shellcode detection enabled, none found!'
 			print '[DEBUG] Fallback - linemode enabled'
 			print
-
 
 	if configopts['verbose']:
 		dumpargsstats(configopts)
