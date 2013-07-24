@@ -322,7 +322,14 @@ def showudpmatches(data):
 		return
 
 	if 'meta' in configopts['outmodes']:
-		print '[MATCH] (%08d/%08d) [UDP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
+		if matchstats['detectiontype'] == 'regex':
+			metastr = 'matches \'%s\'' % (getregexpattern(matchstats['regex']))
+		elif matchstats['detectiontype'] == 'shellcode':
+			metastr = 'contains shellcode'
+		else:
+			metastr = ''
+
+		print '[MATCH] (%08d/%08d) [UDP#%08d] %s:%s %s %s:%s %s' % (
 				configopts['insppacketct'],
 				configopts['packetmatches'],
 				configopts['packetct'],
@@ -331,10 +338,17 @@ def showudpmatches(data):
 				matchstats['directionflag'],
 				dst,
 				dport,
-				getregexpattern(matchstats['regex']),
+				metastr)
+
+		print '[MATCH] (%08d/%08d) [UDP#%08d] match @ %s[%d:%d] - %dB' % (
+				configopts['insppacketct'],
+				configopts['packetmatches'],
+				configopts['packetct'],
+				matchstats['direction'],
 				matchstats['start'],
 				matchstats['end'],
 				matchstats['matchsize'])
+
 	if 'print' in configopts['outmodes']: printable(data[:maxdispbytes])
 	if 'raw' in configopts['outmodes']: print data[:maxdispbytes]
 	if 'hex' in configopts['outmodes']: hexdump(data[:maxdispbytes])
@@ -395,14 +409,7 @@ def inspect(proto, id, data, datalen, regexes, addr):
 						dport,
 						getregexpattern(regex))
 
-	if 'shellcode' in configopts['inspectionmodes'] and shellcodeengine:
-		if configopts['verbose']: print '[DEBUG] inspect - [TCP#%08d] %s:%s - %s:%s contains shellcode' % (
-											id,
-											src,
-											sport,
-											dst,
-											dport)
-
+	if 'shellcode' in configopts['inspectionmodes']:
 		emulator = emu.Emulator(1024)
 		offset = emulator.shellcode_getpc_test(data)
 		if offset < 0: offset = 0
@@ -414,7 +421,25 @@ def inspect(proto, id, data, datalen, regexes, addr):
 			matchstats['start'] = 0
 			matchstats['end'] = len(data)
 			matchstats['matchsize'] = matchstats['end'] - matchstats['start']
+			if configopts['verbose']:
+				print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s contains shellcode (offset: %d | emu_profile_output: %dB)' % (
+						proto,
+						id,
+						src,
+						sport,
+						dst,
+						dport,
+						offset,
+						len(emulator.emu_profile_output))
 			return True
+
+		elif configopts['verbose']: print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s doesnot contain shellcode' % (
+							proto,
+							id,
+							src,
+							sport,
+							dst,
+							dport)
 
 	return False
 
@@ -698,18 +723,6 @@ def showtcpmatches(data):
 		return
 
 	if 'meta' in configopts['outmodes']:
-		if matchstats['detectiontype'] == 'regex':
-			print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s matches \'%s\'' % (
-					configopts['inspstreamct'],
-					configopts['streammatches'],
-					opentcpstreams[matchstats['addr']]['id'],
-					src,
-					sport,
-					matchstats['directionflag'],
-					dst,
-					dport,
-					getregexpattern(matchstats['regex']))
-
 		if matchstats['direction'] == 'CTS': packetlendict = opentcpstreams[matchstats['addr']]['ctspacketlendict']
 		else: packetlendict = opentcpstreams[matchstats['addr']]['stcpacketlendict']
 			
@@ -720,7 +733,28 @@ def showtcpmatches(data):
 				startpacket = pktid
 			endpacket = pktid
 
-		print '[MATCH] (%08d/%08d) [TCP#%08d] match @ %s[%d:%d] - %dB | packet[%d] - packet[%d] - (%s)' % (
+		if matchstats['detectiontype'] == 'regex':
+			metastr = 'matches \'%s\'' % (getregexpattern(matchstats['regex']))
+			packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
+		elif matchstats['detectiontype'] == 'shellcode':
+			metastr = 'contains shellcode'
+			packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
+		else:
+			metastr = ''
+			packetstats = ''
+
+		print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s %s' % (
+				configopts['inspstreamct'],
+				configopts['streammatches'],
+				opentcpstreams[matchstats['addr']]['id'],
+				src,
+				sport,
+				matchstats['directionflag'],
+				dst,
+				dport,
+				metastr)
+
+		print '[MATCH] (%08d/%08d) [TCP#%08d] match @ %s[%d:%d] - %dB %s' % (
 				configopts['inspstreamct'],
 				configopts['streammatches'],
 				opentcpstreams[matchstats['addr']]['id'],
@@ -728,9 +762,7 @@ def showtcpmatches(data):
 				matchstats['start'],
 				matchstats['end'],
 				matchstats['matchsize'],
-				startpacket,
-				endpacket,
-				matchstats['detectiontype'])
+				packetstats)
 
 	if 'print' in configopts['outmodes']: printable(data[:maxdispbytes])
 	if 'raw' in configopts['outmodes']: print data[:maxdispbytes]

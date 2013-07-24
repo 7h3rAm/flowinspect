@@ -1,4 +1,6 @@
 killtcp, is it working?
 tcp session tracking starts from handshake, is it right?
 udp session tracking needs testing
+tcp -T should operate on flows and not packets
+exitstats should include flow insp/match counts and not packet insp/match counts (for TCP)
 
