@@ -7,7 +7,7 @@ __license__	= 'CC-BY-SA 3.0'
 __status__	= 'Development'
 
 
-import os, sys, argparse, datetime
+import os, sys, shutil, argparse, datetime
 
 try: import nids
 except ImportError, ex:
@@ -25,6 +25,7 @@ except importError, ex:
 
 try:
 	from pydfa.pydfa import *
+	from pydfa.graph import *
 	dfaengine = 'pydfa'
 except ImportError, ex:
 	print '[!] Import failed: %s' % (ex)
@@ -48,8 +49,8 @@ configopts = {
 			'desc':'A tool for network traffic inspection',
 			'author':'Ankur Tyagi (7h3rAm) @ Juniper Networks Security Research Group',
 
-			'pcap':'',
-			'device':'',
+			'pcap':None,
+			'device':None,
 			'livemode':False,
 
 			'ctsregexes':[],
@@ -91,12 +92,14 @@ configopts = {
 			'igncase':False,
 			'multiline':False,
 
-			'bpf':'',
+			'bpf':None,
 			'invertmatch':False,
 			'killtcp':False,
 			'verbose':False,
+			'graph':False,
 			'outmodes':[],
-			'logdir':'',
+			'logdir':'.',
+			'graphdir':'.',
 			'writelogs':False,
 			'linemode':False,
 
@@ -106,14 +109,16 @@ configopts = {
 			}
 
 matchstats = {
-			'addr':'',
+			'addr':None,
 			'regex':None,
-			'dfa':None,
+			'dfaobject':None,
+			'dfapattern':None,
+			'dfastatecount':0,
 			'start':0,
 			'end':0,
 			'matchsize':0,
-			'direction':'',
-			'directionflag':'',
+			'direction':None,
+			'directionflag':None,
 			'detectiontype':None
 			}
 
@@ -294,13 +299,15 @@ def handleudp(addr, payload, pkt):
 def showudpmatches(data):
 	global configopts, matchstats
 
+	proto = 'UDP'
 	((src, sport), (dst, dport)) = matchstats['addr']
 
 	if configopts['maxdispbytes'] > 0: maxdispbytes = configopts['maxdispbytes']
 	else: maxdispbytes = len(data)
 
+	filename = '%s/%s-%08d.%s.%s.%s.%s' % (configopts['logdir'], proto, configopts['packetct'], src, sport, dst, dport)
+
 	if configopts['writelogs']:
-		proto = 'UDP'
 		writetofile(proto, configopts['packetct'], src, sport, dst, dport, data)
 
 		if configopts['verbose']:
@@ -341,7 +348,7 @@ def showudpmatches(data):
 		if matchstats['detectiontype'] == 'regex':
 			metastr = 'matches regex: \'%s\'' % (getregexpattern(matchstats['regex']))
 		elif matchstats['detectiontype'] == 'dfa':
-			metastr = 'matches dfa: \'%s\'' % (matchstats['dfa'])
+			metastr = 'matches dfa: \'%s\' (State Count: %d)' % (matchstats['dfapattern'], matchstats['dfastatecount'])
 		elif matchstats['detectiontype'] == 'shellcode':
 			metastr = 'contains shellcode'
 		else:
@@ -430,9 +437,13 @@ def inspect(proto, id, data, datalen, regexes, dfas, addr):
 	if 'dfa' in configopts['inspectionmodes']:
 		for dfa in dfas.keys():
 			retncode = dfa.match(data)
+			dfa.reset_dfa()
+
 			if retncode == 1 and not configopts['invertmatch']:
 				matchstats['detectiontype'] = 'dfa'
-				matchstats['dfa'] = dfas[dfa]
+				matchstats['dfaobject'] = dfa
+				matchstats['dfapattern'] = dfas[dfa]
+				matchstats['dfastatecount'] = dfa.nQ
 				matchstats['start'] = 0
 				matchstats['end'] = datalen
 				matchstats['matchsize'] = matchstats['end'] - matchstats['start']
@@ -445,23 +456,27 @@ def inspect(proto, id, data, datalen, regexes, dfas, addr):
 							dst,
 							dport,
 							dfas[dfa])
+				if configopts['graph']: graphdfatransitions('%s-%08d-%s.%s-%s.%s' % (proto, id, src, sport, dst, dport))
 				return True
 			elif retncode == 0 and configopts['invertmatch']:
-					matchstats['detectiontype'] = 'dfa'
-					matchstats['dfa'] = dfas[dfa]
-					matchstats['start'] = 0
-					matchstats['end'] = datalen
-					matchstats['matchsize'] = matchstats['end'] - matchstats['start']
-					if configopts['verbose']:
-						print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s matches dfa: \'%s\' (invertmatch)' % (
-								proto,
-								id,
-								src,
-								sport,
-								dst,
-								dport,
-								dfas[dfa])
-					return True
+				matchstats['detectiontype'] = 'dfa'
+				matctstats['dfaobj'] = dfa
+				matchstats['dfapattern'] = dfas[dfa]
+				matchstats['dfastatecount'] = automata.nQ
+				matchstats['start'] = 0
+				matchstats['end'] = datalen
+				matchstats['matchsize'] = matchstats['end'] - matchstats['start']
+				if configopts['verbose']:
+					print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s matches dfa: \'%s\' (invertmatch)' % (
+							proto,
+							id,
+							src,
+							sport,
+							dst,
+							dport,
+							dfas[dfa])
+				if configopts['graph']: graphdfatransitions('%s-%08d-%s.%s-%s.%s' % (proto, id, src, sport, dst, dport))
+				return True
 
 			if configopts['verbose']:
 				print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s did not match dfa: \'%s\'' % (
@@ -505,6 +520,32 @@ def inspect(proto, id, data, datalen, regexes, dfas, addr):
 
 	return False
 
+
+def graphdfatransitions(filename):
+	global configopts
+
+	if configopts['graph']:
+		class NullDevice():
+			def write(self, s): pass
+
+		graphtitle = 'DFA Transition Graph for: \'%s\'' % (matchstats['dfapattern'])
+		extension = 'png'
+		graphfilename = '%s.%s' % (filename, extension)
+		automata = FA(matchstats['dfaobject'])
+		automata.draw_graph(graphtitle, 1, 0)
+		stdstdout = sys.stdout
+		sys.stdout = NullDevice()
+		automata.save_graph(graphfilename)
+		sys.stdout = sys.__stdout__	
+
+		if configopts['graphdir'] != '.':
+			if not os.path.exists(configopts['graphdir']):
+				os.makedirs(configopts['graphdir'])
+			else:
+				if os.path.exists(os.path.join(configopts['graphdir'], graphfilename)):
+					os.remove(os.path.join(configopts['graphdir'], graphfilename))
+
+			shutil.move(graphfilename, configopts['graphdir'])
 
 def handletcp(tcp):
 	global configopts, opentcpstreams, regexengine, shellcodeengine, dfaengine
@@ -745,26 +786,22 @@ def handletcp(tcp):
 def showtcpmatches(data):
 	global configopts, opentcpstreams, matchstats
 
+	proto = 'TCP'
 	((src, sport), (dst, dport)) = matchstats['addr']
 
 	if configopts['maxdispbytes'] > 0: maxdispbytes = configopts['maxdispbytes']
 	else: maxdispbytes = len(data)
 
+	filename = '%s/%s-%08d.%s.%s.%s.%s' % (configopts['logdir'], proto, opentcpstreams[matchstats['addr']]['id'], src, sport, dst, dport)
+
 	if configopts['writelogs']:
-		proto = 'TCP'
 		writetofile(proto, opentcpstreams[matchstats['addr']]['id'], src, sport, dst, dport, data)
 
 		if configopts['verbose']:
-			print '[DEBUG] showtcpmatches - [TCP#%08d] Wrote %dB to %s/%s-%08d.%s.%s.%s.%s' % (
+			print '[DEBUG] showtcpmatches - [TCP#%08d] Wrote %dB to %s' % (
 					opentcpstreams[matchstats['addr']]['id'],
 					matchstats['matchsize'],
-					configopts['logdir'],
-					proto,
-					opentcpstreams[matchstats['addr']]['id'],
-					src,
-					sport,
-					dst,
-					dport)
+					filename)
 
 	if 'quite' in configopts['outmodes']:
 		if configopts['verbose'] and matchstats['detectiontype'] == 'regex':
@@ -803,7 +840,7 @@ def showtcpmatches(data):
 			metastr = 'matches regex: \'%s\'' % (getregexpattern(matchstats['regex']))
 			packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
 		elif matchstats['detectiontype'] == 'dfa':
-			metastr = 'matches dfa: \'%s\'' % (matchstats['dfa'])
+			metastr = 'matches dfa: \'%s\' (State Count: %d)' % (matchstats['dfapattern'], matchstats['dfastatecount'])
 			packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
 		elif matchstats['detectiontype'] == 'shellcode':
 			metastr = 'contains shellcode'
@@ -990,14 +1027,16 @@ def dumpargsstats(configopts):
 		if 'hex' in configopts['outmodes']: print '\'hex\'',
 		if 'print' in configopts['outmodes']: print '\'print\'',
 		if 'raw' in configopts['outmodes']: print '\'raw\'',
+		if 'graph' in configopts['outmodes']: print '\'graph\'',
 		if configopts['writelogs']: print '\'write: %s\'' % (configopts['logdir']),
 	print ']'
 
 	print '%-30s' % '[DEBUG] Misc options:',
-	print '[ BPF: \'%s\' | invertmatch: %s | killtcp: %s | verbose: %s | linemode: %s ]' % (
+	print '[ BPF: \'%s\' | invertmatch: %s | killtcp: %s | graph: %s | verbose: %s | linemode: %s ]' % (
 			configopts['bpf'],
 			configopts['invertmatch'],
 			configopts['killtcp'],
+			configopts['graph'],
 			configopts['verbose'],
 			configopts['linemode'])
 	print
@@ -1174,8 +1213,8 @@ def main():
 									required=False,
 									help='max bytes to display')
 
-	out_options = parser.add_argument_group('Out Options')
-	out_options.add_argument(
+	output_options = parser.add_argument_group('Output Options')
+	output_options.add_argument(
 									'-w',
 									metavar='logdir',
 									dest='writebytes',
@@ -1184,9 +1223,9 @@ def main():
 									required=False,
 									nargs='?',
 									help='write matching packets/streams')
-	out_options.add_argument(
+	output_options.add_argument(
 									'-o',
-									dest='outmode',
+									dest='outmodes',
 									choices=('quite', 'meta', 'hex', 'print', 'raw'),
 									action='append',
 									default=[],
@@ -1195,14 +1234,6 @@ def main():
 
 	misc_options = parser.add_argument_group('Misc. Options')
 	misc_options.add_argument(
-									'-E',
-									dest='shellcode',
-									default=False,
-									action='store_true',
-									required=False,
-									help='enable shellcode detection (libemu)')
-
-	misc_options.add_argument(
 									'-f',
 									metavar='--bpf',
 									dest='bpf',
@@ -1210,6 +1241,22 @@ def main():
 									action='store',
 									required=False,
 									help='BPF expression')
+	misc_options.add_argument(
+									'-g',
+									metavar='graph',
+									dest='graph',
+									default='',
+									action='store',
+									required=False,
+									nargs='?',
+									help='generate DFA transitions graph')
+	misc_options.add_argument(
+									'-E',
+									dest='shellcode',
+									default=False,
+									action='store_true',
+									required=False,
+									help='enable shellcode detection (libemu)')
 	misc_options.add_argument(
 									'-v',
 									dest='invmatch',
@@ -1324,16 +1371,22 @@ def main():
 		else:
 			configopts['logdir'] = '.'
 
-	if not args.outmode:
+	if not args.outmodes:
 		configopts['outmodes'].append('meta')
 		configopts['outmodes'].append('hex')
 	else:
-		for mode in args.outmode:
-			if mode == 'quite': configopts['outmodes'].append('quite')
-			elif mode == 'meta': configopts['outmodes'].append('meta')
-			elif mode == 'hex': configopts['outmodes'].append('hex')
-			elif mode == 'print': configopts['outmodes'].append('print')
-			elif mode == 'raw': configopts['outmodes'].append('raw')
+		if 'quite' in args.outmodes: configopts['outmodes'].append('quite')
+		if 'meta' in args.outmodes: configopts['outmodes'].append('meta')
+		if 'hex' in args.outmodes: configopts['outmodes'].append('hex')
+		if 'print' in args.outmodes: configopts['outmodes'].append('print')
+		if 'raw' in args.outmodes: configopts['outmodes'].append('raw')
+
+	if args.graph != '':
+		configopts['graph'] = True
+		if args.graph != None:
+			configopts['graphdir'] = args.graph
+		else:
+			configopts['graphdir'] = '.'
 
 	if args.shellcode:
 		configopts['inspectionmodes'].append('shellcode')

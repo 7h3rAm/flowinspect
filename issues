@@ -4,4 +4,6 @@ udp session tracking needs testing
 tcp -T should operate on flows and not packets
 exitstats should include flow insp/match counts and not packet insp/match counts (for TCP)
 shellcode inspection needs CTS OR STC not BOTH
+merge show{tcp, udp}matches
+code cleanup { delete object when doen using, ... }
 

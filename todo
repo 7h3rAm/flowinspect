@@ -13,7 +13,7 @@
 [ ] pcap write (with mods to header fields, regex replace, ...)
 [ ] inspection modes:
 	[ ] search
-	[ ] dfa
+	[x] dfa
 	[x] regex
 	[x] libemu
 	[ ] yara (peid/clamav)
