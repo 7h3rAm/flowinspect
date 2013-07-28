@@ -4,4 +4,5 @@
 *.py[cod]
 *tcp
 *udp
+*png
 

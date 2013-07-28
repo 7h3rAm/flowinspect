@@ -397,7 +397,7 @@ def showudpmatches(data):
 	configopts['disppacketct'] += 1
 
 
-def inspect(proto, data, datalen, regexes, dfas, addrkey, direction):
+def inspect(proto, data, datalen, regexes, addrkey, direction):
 	global configopts, opentcpflows, openudpflows,  matchstats, regexengine, shellcodeengine, dfaengine
 
 	skip = False
@@ -408,10 +408,8 @@ def inspect(proto, data, datalen, regexes, dfas, addrkey, direction):
 
 	if proto == 'TCP':
 		id = opentcpflows[addrkey]['id']
-		openflows = opentcpflows
 	elif proto == 'UDP':
 		id = openudpflows[addrkey]['id']
-		openflows = openudpflows
 
 	if configopts['verbose']:
 		print '[DEBUG] inspect - [%s#%08d] Received %dB for inspection from %s:%s - %s:%s' % (
@@ -461,24 +459,30 @@ def inspect(proto, data, datalen, regexes, dfas, addrkey, direction):
 						dport,
 						getregexpattern(regex))
 
+	dfas = {}
 	if 'dfa' in configopts['inspectionmodes']:
-		for dfaobject in dfas:
+		if direction == 'CTS': dfas = configopts['ctsdfas']
+		if direction == 'STC': dfas = configopts['stcdfas']
+
+		for dfaobject in dfas.keys():
 			matched = False
 
 			retncode = dfaobject.match(data)
 			dfaobject.reset_dfa()
 
+			if retncode == 1 and not configopts['invertmatch']: matched = True
+			elif retncode == 0 and configopts['invertmatch']: matched = True
+
 			if direction == 'CTS':
 				memberid = configopts['ctsdfas'][dfaobject]['memberid']
 				dfapattern = configopts['ctsdfas'][dfaobject]['dfapattern']
+				dfas = configopts['ctsdfas']
 			if direction == 'STC':
-				memberid = configopts[addrkey]['stcdfastats'][dfaobject]['memberid']
-				dfapattern = configopts[addrkey]['stcdfastats'][dfaobject]['dfapattern']
+				memberid = configopts['stcdfas'][dfaobject]['memberid']
+				dfapattern = configopts['stcdfas'][dfaobject]['dfapattern']
+				dfas = configopts['stcdfas']
 
 			dfaexpression = configopts['dfaexpression']
-
-			if retncode == 1 and not configopts['invertmatch']: matched = True
-			elif retncode == 0 and configopts['invertmatch']: matched = True
 
 			if matched:
 				partialmatch = True
@@ -491,25 +495,26 @@ def inspect(proto, data, datalen, regexes, dfas, addrkey, direction):
 				matchstats['end'] = datalen
 				matchstats['matchsize'] = matchstats['end'] - matchstats['start']
 
-				if direction == 'CTS':
-					openflows[addrkey]['ctsmatcheddfastats'].update({
-													dfaobject: {
-															'dfaobject': dfaobject,
-															'dfapattern': dfapattern,
-															'memberid': memberid,
-															'truthvalue': 'True'
-														}
-												})
+				if proto == 'TCP':
+					if direction == 'CTS':
+						opentcpflows[addrkey]['ctsmatcheddfastats'].update({
+														dfaobject: {
+																'dfaobject': dfaobject,
+																'dfapattern': dfapattern,
+																'memberid': memberid,
+																'truthvalue': 'True'
+															}
+													})
 	
-				if direction == 'STC':
-					openflows[addrkey]['stcmatcheddfastats'].update({
-													dfaobject: {
-															'dfaobject': dfaobject,
-															'dfapattern': dfapattern,
-															'memberid': memberid,
-															'truthvalue': 'True'
-														}
-												})
+					if direction == 'STC':
+						opentcpflows[addrkey]['stcmatcheddfastats'].update({
+														dfaobject: {
+																'dfaobject': dfaobject,
+																'dfapattern': dfapattern,
+																'memberid': memberid,
+																'truthvalue': 'True'
+															}
+													})
 
 				if configopts['verbose']:
 					print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s matches %s: \'%s\'' % (
@@ -536,9 +541,12 @@ def inspect(proto, data, datalen, regexes, dfas, addrkey, direction):
 
 		if partialmatch:
 			exprdict = {}
-			for key in dfas:
-				if key in openflows[addrkey]['ctsmatcheddfastats']: exprdict[openflows[addrkey]['ctsmatcheddfastats'][key]['memberid']] = openflows[addrkey]['ctsmatcheddfastats'][key]['truthvalue']
-				if key in openflows[addrkey]['stcmatcheddfastats']: exprdict[openflows[addrkey]['stcmatcheddfastats'][key]['memberid']] = openflows[addrkey]['stcmatcheddfastats'][key]['truthvalue']
+			for key in opentcpflows[addrkey]['ctsmatcheddfastats'].keys():
+				if key in opentcpflows[addrkey]['ctsmatcheddfastats']: exprdict[opentcpflows[addrkey]['ctsmatcheddfastats'][key]['memberid']] = opentcpflows[addrkey]['ctsmatcheddfastats'][key]['truthvalue']
+				if key in opentcpflows[addrkey]['stcmatcheddfastats']: exprdict[opentcpflows[addrkey]['stcmatcheddfastats'][key]['memberid']] = opentcpflows[addrkey]['stcmatcheddfastats'][key]['truthvalue']
+			for key in opentcpflows[addrkey]['stcmatcheddfastats'].keys():
+				if key in opentcpflows[addrkey]['ctsmatcheddfastats']: exprdict[opentcpflows[addrkey]['ctsmatcheddfastats'][key]['memberid']] = opentcpflows[addrkey]['ctsmatcheddfastats'][key]['truthvalue']
+				if key in opentcpflows[addrkey]['stcmatcheddfastats']: exprdict[opentcpflows[addrkey]['stcmatcheddfastats'][key]['memberid']] = opentcpflows[addrkey]['stcmatcheddfastats'][key]['truthvalue']
 
 			exprlist = []
 			for token in configopts['dfaexpression'].split(' '):
@@ -552,6 +560,7 @@ def inspect(proto, data, datalen, regexes, dfas, addrkey, direction):
 				else: exprboolean.append('False')
 
 			evalboolean = ' '.join(exprboolean)
+
 			finalmatch = eval(evalboolean)
 			if configopts['verbose']:
 				print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s (\'%s\' ==> \'%s\' ==> \'%s\')' % (
@@ -762,6 +771,10 @@ def handletcp(tcp):
 				for regex in configopts['stcregexes']:
 					regexes.append(regex)
 
+			if dfaengine and 'dfa' in configopts['inspectionmodes']:
+				for dfaobj in configopts['stcdfas'].keys():
+					dfas.append(dfaobj)
+
 		if configopts['verbose']:
 			print '[DEBUG] handletcp - [TCP#%08d] %s:%s %s %s:%s [%dB] (CTS: %d | STC: %d | TOT: %d)' % (
 					opentcpflows[addrkey]['id'],
@@ -814,7 +827,7 @@ def handletcp(tcp):
 					depth,
 					inspdatalen)
 
-		matched = inspect('TCP', inspdata, inspdatalen, regexes, dfas, addrkey, direction)
+		matched = inspect('TCP', inspdata, inspdatalen, regexes, addrkey, direction)
 
 		opentcpflows[addrkey]['insppackets'] += 1
 		if direction == 'CTS':
@@ -941,13 +954,12 @@ def showtcpmatches(data):
 			metastr = ''
 			packetstats = ''
 
-		print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s %s' % (
+		print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s - %s:%s %s' % (
 				configopts['insptcppacketct'],
 				configopts['streammatches'],
 				opentcpflows[matchstats['addr']]['id'],
 				src,
 				sport,
-				matchstats['directionflag'],
 				dst,
 				dport,
 				metastr)
@@ -1084,20 +1096,30 @@ def dumpargsstats(configopts):
 		if mode == 'shellcode': print '\'shellcode (%s)\'' % (shellcodeengine),
 	print ']'
 
-	print '%-30s' % '[DEBUG] CTS regex:', ; print '[',
+	print '%-30s' % '[DEBUG] CTS regex:', ; print '[ %d |' % (len(configopts['ctsregexes'])),
 	for c in configopts['ctsregexes']:
 		print '\'%s\'' % getregexpattern(c),
-	print '| %d ]' % (len(configopts['ctsregexes']))
+	print ']'
 
-	print '%-30s' % '[DEBUG] STC regex:', ; print '[',
+	print '%-30s' % '[DEBUG] STC regex:', ; print '[ %d |' % (len(configopts['stcregexes'])),
 	for s in configopts['stcregexes']:
 		print '\'%s\'' % getregexpattern(s),
-	print '| %d ]' % (len(configopts['stcregexes']))
+	print ']'
 
 	print '%-30s' % '[DEBUG] RE stats:', ; print '[ Flags: %d - (' % (configopts['reflags']),
 	if configopts['igncase']: print 'ignorecase',
 	if configopts['multiline']: print 'multiline',
 	print ') ]'
+
+	print '%-30s' % '[DEBUG] CTS dfa:', ; print '[ %d |' % (len(configopts['ctsdfas'])),
+	for c in configopts['ctsdfas']:
+		print '\'%s\'' % configopts['ctsdfas'][c]['dfapattern'],
+	print ']'
+
+	print '%-30s' % '[DEBUG] STC dfa:', ; print '[ %d |' % (len(configopts['stcdfas'])),
+	for s in configopts['stcdfas']:
+		print '\'%s\'' % configopts['stcdfas'][s]['dfapattern'],
+	print ']'
 
 	print '%-30s' % '[DEBUG] DFA expression:',
 	print '[ \'%s\' ]' % (configopts['dfaexpression'])
@@ -1443,6 +1465,31 @@ def main():
 									'truthvalue':'False'
 								}
 
+		if args.sdfas:
+			if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
+			for s in args.sdfas:
+				(memberid, dfa) = validatedfaexpr(s)
+				configopts['stcdfas'][Rexp(dfa)] = {
+									'dfapattern':dfa,
+									'memberid':memberid,
+									'truthvalue':'False'
+								}
+
+		if args.adfas:
+			if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
+			for a in args.adfas:
+				(memberid, dfa) = validatedfaexpr(a)
+				configopts['ctsdfas'][Rexp(dfa)] = {
+									'dfapattern':dfa,
+									'memberid':memberid,
+									'truthvalue':'False'
+								}
+				configopts['stcdfas'][Rexp(dfa)] = {
+									'dfapattern':dfa,
+									'memberid':memberid,
+									'truthvalue':'False'
+								}
+
 		if len(configopts['ctsdfas']) > 0 or len(configopts['stcdfas']) > 0:
 			if args.dfaexpr:
 				configopts['dfaexpression'] = args.dfaexpr.strip().lower()
@@ -1450,6 +1497,10 @@ def main():
 				memberids = []
 				for dfa in configopts['ctsdfas'].keys():
 					memberids.append(configopts['ctsdfas'][dfa]['memberid'])
+					memberids.append('and')
+
+				for dfa in configopts['stcdfas'].keys():
+					memberids.append(configopts['stcdfas'][dfa]['memberid'])
 					memberids.append('and')
 
 				del memberids[-1]
