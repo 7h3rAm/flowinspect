@@ -23,5 +23,6 @@
 [ ] CFG for shellcode
 [ ] state transition graph for regex
 [ ] boolean expressions parser
+[ ] dfa + regex together (m01 with r01, m02 with r02, ...)
 [ ] shellcode inspection should enable disassembled output (should auto include a new shellcode outmode)
 
