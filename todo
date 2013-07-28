@@ -20,4 +20,8 @@
 [x] udp stream tracking (cts/stc/any)
 [x] show matching tcp packet ids (handy when pattern spans many packets)
 [ ] ip/tcp/udp header checks
+[ ] CFG for shellcode
+[ ] state transition graph for regex
+[ ] boolean expressions parser
+[ ] shellcode inspection should enable disassembled output (should auto include a new shellcode outmode)
 
