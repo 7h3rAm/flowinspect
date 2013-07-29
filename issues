@@ -1,8 +1,8 @@
 [ ] killtcp, is it working?
 [ ] tcp session tracking starts from handshake, is it right?
 [ ] udp session tracking needs testing
-[ ] tcp -T should operate on flows and not packets
+[x] tcp -T should operate on flows and not packets
 [ ] shellcode inspection needs CTS OR STC not BOTH
 [ ] merge show{tcp, udp}matches
-[ ] code cleanup { delete object when done using, ... }
+[ ] code cleanup { delete object when done using, remove duplicate/unnecessary objects, ... }
 
