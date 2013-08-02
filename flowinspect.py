@@ -531,6 +531,8 @@ def inspect(proto, data, datalen, regexes, addrkey, direction):
                 dfapattern = configopts['stcdfas'][dfaobject]['dfapattern']
                 dfas = configopts['stcdfas']
 
+#                if dfaobject in opentcpflows[addrkey]['stcmatcheddfastats']:
+#                   print "opentcpflows[%s]['stcmatcheddfastats'][%s]['truthvalue']: %s" % (addrkey, dfaobject, opentcpflows[addrkey]['stcmatcheddfastats'][dfaobject]['truthvalue'])
                 if proto == 'TCP':
                     if dfaobject in opentcpflows[addrkey]['stcmatcheddfastats'] and opentcpflows[addrkey]['stcmatcheddfastats'][dfaobject]['truthvalue']:
                         skip = True
@@ -656,12 +658,26 @@ def inspect(proto, data, datalen, regexes, addrkey, direction):
 
                 exprlist = []
                 for token in configopts['dfaexpression'].split(' '):
-                    exprlist.append(token)
+                    if '(' in token and ')' in token:
+                        token = token.replace('(', '')
+                        token = token.replace(')', '')
+                        exprlist.append('(')
+                        exprlist.append(token)
+                        exprlist.append(')')
+                    elif '(' in token:
+                        exprlist.append('(')
+                        exprlist.append(token.replace('(', ''))
+                    elif ')' in token:
+                        exprlist.append(token.replace(')', ''))
+                        exprlist.append(')')
+                    else: exprlist.append(token)
 
                 exprboolean = []
                 for token in exprlist:
                     if token == 'and': exprboolean.append(token)
                     elif token == 'or': exprboolean.append(token)
+                    elif token == '(': exprboolean.append(token)
+                    elif token == ')': exprboolean.append(token)
                     elif token in exprdict.keys(): exprboolean.append(exprdict[token])
                     else: exprboolean.append('False')
 
@@ -758,6 +774,7 @@ def inspect(proto, data, datalen, regexes, addrkey, direction):
         offset = emulator.shellcode_getpc_test(data)
         if offset < 0: offset = 0
         emulator.prepare(data, offset)
+
         if not emulator.test() and emulator.emu_profile_output:
             emulator.free()
             matchstats['detectiontype'] = 'shellcode'
@@ -1215,7 +1232,7 @@ def showtcpmatches(data):
 
 
 def validatedfaexpr(expr):
-    if not re.search(r'm[0-9][1-9]\s*=\s*', expr):
+    if not re.search(r'm[0-9][0-9]\s*=\s*', expr):
         print '[-] Incorrect DFA expression: \'%s\'' % (expr)
         print '[-] DFA format: \'m[0-9][1-9]\s*=\s*<expr>\''
         print
@@ -1640,7 +1657,7 @@ def main():
                                     required=False,
                                     help='confirm before initializing NIDS')
     misc_options.add_argument(
-                                    '-E',
+                                    '-M',
                                     dest='shellcode',
                                     default=False,
                                     action='store_true',

@@ -6,3 +6,10 @@
 [ ] merge show{tcp, udp}matches
 [ ] code cleanup { delete object when done using, remove duplicate/unnecessary objects, ... }
 
+
+./flowinspect.py -b32 -p adobe-cooltype.pcap -S 'm01 = .*%PDF.*' -S 'm02 = .*<<[^>]+/Subtype\s*/(TrueType|OpenType).*SING[^\000][^\000][^\000][^\000]\x00 00\x[^\000][^\000](\x00 00\x[^\000][^\000]|[^\000][^\000]\x00 00\x).*' -S 'm03 = .*name[^\000][^\000][^\000][^\000]\x00\x[^\000][^\000][^\000]\x00 00 00 00\x.*' -S 'm04 = .*/#53u#62t#79#70#65 /T#72#75#65Type.*<</T#79pe/A#63tio#6e/S/J#61v#61Script/#4a#53 12 0 R>>.*' -S 'm05 = .*/(#53|S)(#75|u)(#62|b)(#74|t)(#79|y)(#70|p)(#65|e) /(#54|T)(#72|r)(#75|u)(#65|e)(#54|T)(#79|y)(#70|p)(#65|e).*\x4c 33 25 53 53 33 33 33 03 33 b3 9c 2a f5 76 bb 6a 5d af 7a 9b 6c fa 67 e6 bd d7 5b a6 b0 7d 9f\x.*' -S 'm06 = .*<xmpMM:DocumentID>uuid:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa</xmpMM:DocumentID>.*' -X '(m01 AND m02 AND m03) OR m04 OR m05 OR (m01 AND m06)'
+
+
+
+
+
