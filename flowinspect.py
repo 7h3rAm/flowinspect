@@ -20,7 +20,7 @@ except ImportError, ex:
 try:
     import re2 as re
     regexengine = 're2'
-except importError, ex:
+except ImportError, ex:
     import re
     regexengine = 're'
 
@@ -519,11 +519,11 @@ def inspect(proto, data, datalen, regexes, addrkey, direction):
 
                 if proto == 'TCP':
                     if dfaobject in opentcpflows[addrkey]['ctsmatcheddfastats'] and opentcpflows[addrkey]['ctsmatcheddfastats'][dfaobject]['truthvalue']:
-                        skip = True
+                        #skip = True
                         memberid = opentcpflows[addrkey]['ctsmatcheddfastats'][dfaobject]['memberid']
                 elif proto == 'UDP':
                     if dfaobject in openudpflows[addrkey]['ctsmatcheddfastats'] and openudpflows[addrkey]['ctsmatcheddfastats'][dfaobject]['truthvalue']:
-                        skip = True
+                        #skip = True
                         memberid = openudpflows[addrkey]['ctsmatcheddfastats'][dfaobject]['memberid']
 
             if direction == 'STC':
@@ -531,15 +531,13 @@ def inspect(proto, data, datalen, regexes, addrkey, direction):
                 dfapattern = configopts['stcdfas'][dfaobject]['dfapattern']
                 dfas = configopts['stcdfas']
 
-#                if dfaobject in opentcpflows[addrkey]['stcmatcheddfastats']:
-#                   print "opentcpflows[%s]['stcmatcheddfastats'][%s]['truthvalue']: %s" % (addrkey, dfaobject, opentcpflows[addrkey]['stcmatcheddfastats'][dfaobject]['truthvalue'])
                 if proto == 'TCP':
                     if dfaobject in opentcpflows[addrkey]['stcmatcheddfastats'] and opentcpflows[addrkey]['stcmatcheddfastats'][dfaobject]['truthvalue']:
-                        skip = True
+                        #skip = True
                         memberid = opentcpflows[addrkey]['stcmatcheddfastats'][dfaobject]['memberid']
                 elif proto == 'UDP':
                     if dfaobject in openudpflows[addrkey]['stcmatcheddfastats'] and openudpflows[addrkey]['stcmatcheddfastats'][dfaobject]['truthvalue']:
-                        skip = True
+                        #skip = True
                         memberid = openudpflows[addrkey]['stcmatcheddfastats'][dfaobject]['memberid']
 
             if skip:
@@ -1761,8 +1759,9 @@ def main():
             if args.dfaexpr:
                 configopts['dfaexpression'] = args.dfaexpr.strip().lower()
                 for token in configopts['dfaexpression'].split(' '):
-                    if token != 'and' and token != 'or':
+                    if token != 'and' and token != 'oand' and token != 'or':
                         configopts['dfaexprmembers'].append(token)
+                configopts['dfaexpression'] = re.sub('oand', 'and', configopts['dfaexpression'])
             else:
                 memberids = []
                 for dfa in configopts['ctsdfas'].keys():
