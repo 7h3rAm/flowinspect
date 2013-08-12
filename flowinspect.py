@@ -46,6 +46,13 @@ except ImportError, ex:
     print '[!] Import failed: %s' % (ex)
     shellcodeengine = None
 
+try:
+    import yara
+    yaraengine = 'pyyara'
+except ImportError, ex:
+    print '[!] Import failed: %s' % (ex)
+    yaraengine = None
+
 
 sys.dont_write_bytecode = True
 from utils import *
@@ -69,6 +76,9 @@ configopts = {
 
             'ctsdfas': {},
             'stcdfas': {},
+
+            'ctsyararules': {},
+            'stcyararules': {},
 
             'dfaexpression': None,
             'dfaexprmembers': [],
@@ -169,8 +179,8 @@ def handleudp(addr, payload, pkt):
 
     inspectcts = False
     inspectstc = False
-    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsfuzzpatterns']) > 0 or len(configopts['ctsdfas']) > 0: inspectcts = True
-    if len(configopts['stcregexes']) > 0 or len(configopts['stcfuzzpatterns']) > 0 or len(configopts['stcdfas']) > 0: inspectstc = True
+    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsfuzzpatterns']) > 0 or len(configopts['ctsdfas']) > 0 or len(configopts['ctsyararules']) > 0: inspectcts = True
+    if len(configopts['stcregexes']) > 0 or len(configopts['stcfuzzpatterns']) > 0 or len(configopts['stcdfas']) > 0 or len(configopts['stcyararules']) > 0: inspectstc = True
 
     if isudpcts(addr):
         if inspectcts or 'shellcode' in configopts['inspectionmodes'] or configopts['linemode']:
@@ -206,28 +216,36 @@ def handleudp(addr, payload, pkt):
 
     regexes = []
     fuzzpatterns = []
+    yararuleobjects = []
     timestamp = datetime.datetime.fromtimestamp(nids.get_pkt_ts()).strftime('%H:%M:%S | %Y/%m/%d')
 
     if direction == 'CTS':
         openudpflows[key]['ctsdatasize'] += count
-        if regexengine:
+        if regexengine and 'regex' in configopts['inspectionmodes']:
             for regex in configopts['ctsregexes']:
                 regexes.append(regex)
 
-        if fuzzengine:
+        if fuzzengine and 'fuzzy' in configopts['inspectionmodes']:
             for fuzzpattern in configopts['ctsfuzzpatterns']:
                 fuzzpatterns.append(fuzzpattern)
 
+        if yaraengine and 'yara' in configopts['inspectionmodes']:
+            for yararuleobj in configopts['ctsyararules']:
+                yararuleobjects.append(yararuleobj)
+
     elif direction == 'STC':
         openudpflows[key]['stcdatasize'] += count
-        if regexengine:
+        if regexengine and 'regex' in configopts['inspectionmodes']:
             for regex in configopts['stcregexes']:
                 regexes.append(regex)
 
-        if fuzzengine:
+        if fuzzengine and 'fuzzy' in configopts['inspectionmodes']:
             for fuzzpattern in configopts['stcfuzzpatterns']:
                 fuzzpatterns.append(fuzzpattern)
 
+        if yaraengine and 'yara' in configopts['inspectionmodes']:
+            for yararuleobj in configopts['stcyararules']:
+                yararuleobjects.append(yararuleobj)
 
     if configopts['verbose']:
         print '[DEBUG] handleudp - [UDP#%08d] %s %s %s [%dB] (TRACKED: %d) (CTS: %dB | STC: %dB | TOT: %dB)' % (
@@ -298,7 +316,7 @@ def handleudp(addr, payload, pkt):
                 depth,
                 inspdatalen)
 
-    matched = inspect('UDP', inspdata, inspdatalen, regexes, fuzzpatterns, addrkey, direction)
+    matched = inspect('UDP', inspdata, inspdatalen, regexes, fuzzpatterns, yararuleobjects, addrkey, direction)
 
     if matched:
         openudpflows[key]['matches'] += 1
@@ -404,8 +422,12 @@ def showudpmatches(data):
                 matchsize = dfapartialmatches[configopts['dfapartialmatchmember']]['matchsize']
             else:
                 metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (matchstats['dfapattern'], matchstats['dfastatecount'])
+
         elif matchstats['detectiontype'] == 'shellcode':
             metastr = 'contains shellcode (Offset: %d)' % (matchstats['shellcodeoffset'])
+
+        elif matchstats['detectiontype'] == 'yara':
+            metastr = 'matches rule: \'%s\' from %s' % (matchstats['yararulename'], matchstats['yararulefilepath'])
 
         else:
             metastr = ''
@@ -450,7 +472,7 @@ def showudpmatches(data):
     configopts['disppacketct'] += 1
 
 
-def inspect(proto, data, datalen, regexes, fuzzpatterns, addrkey, direction):
+def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrkey, direction):
     global configopts, opentcpflows, openudpflows, matchstats, dfapartialmatches, regexengine, shellcodeengine, dfaengine
 
     skip = False
@@ -857,7 +879,41 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, addrkey, direction):
                             dst,
                             dport)
 
+    if 'yara' in configopts['inspectionmodes']:
+       for ruleobj in yararuleobjects:
+            matches = ruleobj.match(data=data, callback=yaramatchcallback)
+
+            if matches:
+                if not configopts['invertmatch']: matched = True
+                else: matched = False
+            else:
+                if configopts['invertmatch']: matched = True
+                else: matched = False
+
+            if matched:
+                matchstats['detectiontype'] = 'yara'
+
+                for rule in configopts['ctsyararules']:
+                    if rule == ruleobj: matchstats['yararulefilepath'] = configopts['ctsyararules'][rule]['filepath']
+                for rule in configopts['stcyararules']:
+                    if rule == ruleobj: matchstats['yararulefilepath'] = configopts['stcyararules'][rule]['filepath']
+                matchstats['matchsize'] = matchstats['end'] - matchstats['start']
+                return True
+
     return False
+
+
+def yaramatchcallback(data):
+    global matchstats
+
+    matchstats['yararulenamespace'] = data['namespace']
+    matchstats['yararulename'] = data['rule']
+    matchstats['yararulemeta'] = data['meta']
+    for (start, var, matchstr) in data['strings']:
+        matchstats['start'] = start
+        matchstats['end'] = start + len(matchstr)
+
+    yara.CALLBACK_ABORT
 
 
 def graphdfatransitions(graphtitle, filename, dfapattern, dfaobject):
@@ -919,13 +975,16 @@ def handletcp(tcp):
 
     regexes = []
     fuzzpatterns = []
+    yararuleobjects = []
     timestamp = datetime.datetime.fromtimestamp(nids.get_pkt_ts()).strftime('%H:%M:%S | %Y/%m/%d')
     endstates = [ nids.NIDS_CLOSE, nids.NIDS_TIMED_OUT, nids.NIDS_RESET ]
 
     inspectcts = False
     inspectstc = False
-    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsfuzzpatterns']) > 0 or len(configopts['ctsdfas']) > 0: inspectcts = True
-    if len(configopts['stcregexes']) > 0 or len(configopts['stcfuzzpatterns']) > 0 or len(configopts['stcdfas']) > 0: inspectstc = True
+    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsfuzzpatterns']) > 0 or len(configopts['ctsdfas']) > 0 or len(configopts['ctsyararules']) > 0:
+        inspectcts = True
+    if len(configopts['stcregexes']) > 0 or len(configopts['stcfuzzpatterns']) > 0 or len(configopts['stcdfas']) > 0 or len(configopts['stcyararules']) > 0:
+        inspectstc = True
 
     if tcp.nids_state == nids.NIDS_JUST_EST:
         if addrkey not in opentcpflows:
@@ -1005,6 +1064,10 @@ def handletcp(tcp):
                 for fuzzpattern in configopts['ctsfuzzpatterns']:
                     fuzzpatterns.append(fuzzpattern)
 
+            if yaraengine and 'yara' in configopts['inspectionmodes']:
+                for yararuleobj in configopts['ctsyararules']:
+                    yararuleobjects.append(yararuleobj)
+
         if tcp.client.count_new > 0:
             direction = 'STC'
             directionflag = '<'
@@ -1022,6 +1085,10 @@ def handletcp(tcp):
             if fuzzengine and 'fuzzy' in configopts['inspectionmodes']:
                 for fuzzpattern in configopts['stcfuzzpatterns']:
                     fuzzpatterns.append(fuzzpattern)
+
+            if yaraengine and 'yara' in configopts['inspectionmodes']:
+                for yararuleobj in configopts['stcyararules']:
+                    yararuleobjects.append(yararuleobj)
 
         if configopts['verbose']:
             print '[DEBUG] handletcp - [TCP#%08d] %s:%s %s %s:%s [%dB] (CTS: %d | STC: %d | TOT: %d)' % (
@@ -1079,7 +1146,7 @@ def handletcp(tcp):
         else:
             opentcpflows[addrkey]['stcpacketlendict'].update({ opentcpflows[addrkey]['insppackets']:inspdatalen })
 
-        matched = inspect('TCP', inspdata, inspdatalen, regexes, fuzzpatterns, addrkey, direction)
+        matched = inspect('TCP', inspdata, inspdatalen, regexes, fuzzpatterns, yararuleobjects, addrkey, direction)
 
         if matched:
             if configopts['killtcp']: tcp.kill
@@ -1242,6 +1309,10 @@ def showtcpmatches(data):
 
         elif matchstats['detectiontype'] == 'shellcode':
             metastr = 'contains shellcode (Offset: %d)' % (matchstats['shellcodeoffset'])
+            packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
+
+        elif matchstats['detectiontype'] == 'yara':
+            metastr = 'matches rule: \'%s\' from %s' % (matchstats['yararulename'], matchstats['yararulefilepath'])
             packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
 
         else:
@@ -1462,6 +1533,17 @@ def dumpargsstats(configopts):
         print '%-30s' % '[DEBUG] DFA expression:',
         print '[ \'%s\' ]' % (configopts['dfaexpression'])
 
+    if 'yara' in configopts['inspectionmodes']:
+        print '%-30s' % '[DEBUG] CTS yara rules:', ; print '[ %d |' % (len(configopts['ctsyararules'])),
+        for c in configopts['ctsyararules']:
+            print '\'%s\'' % (c),
+        print ']'
+
+        print '%-30s' % '[DEBUG] STC yara rules:', ; print '[ %d |' % (len(configopts['stcyararules'])),
+        for s in configopts['stcyararules']:
+            print '\'%s\'' % (s),
+        print ']'
+
     print '%-30s' % '[DEBUG] Inspection limits:',
     print '[ Streams: %d | Packets: %d | Offset: %d | Depth: %d ]' % (
             configopts['maxinspstreams'],
@@ -1543,7 +1625,7 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='regex to match against client data')
+                                    help='regex to match against CTS data')
     regex_direction_flags.add_argument(
                                     '-s',
                                     metavar='--sregex',
@@ -1551,7 +1633,7 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='regex to match against server data')
+                                    help='regex to match against STC data')
     regex_direction_flags.add_argument(
                                     '-a',
                                     metavar='--aregex',
@@ -1559,7 +1641,7 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='regex to match against any data')
+                                    help='regex to match against ANY data')
 
     regex_flags = parser.add_argument_group('RegEx Flags')
     regex_flags.add_argument(
@@ -1577,7 +1659,7 @@ def main():
                                     required=False,
                                     help='disable multiline match')
 
-    fuzzy_direction_flags = parser.add_argument_group('Fuzzy Match per Direction')
+    fuzzy_direction_flags = parser.add_argument_group('Fuzzy Patterns per Direction')
     fuzzy_direction_flags.add_argument(
                                     '-G',
                                     metavar='--cfuzz',
@@ -1585,7 +1667,7 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='string to fuzzy match against client data')
+                                    help='string to fuzzy match against CTS data')
     fuzzy_direction_flags.add_argument(
                                     '-H',
                                     metavar='--sfuzz',
@@ -1593,7 +1675,7 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='string to fuzzy match against server data')
+                                    help='string to fuzzy match against STC data')
     fuzzy_direction_flags.add_argument(
                                     '-I',
                                     metavar='--afuzz',
@@ -1601,9 +1683,9 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='string to fuzzy match against any data')
+                                    help='string to fuzzy match against ANY data')
 
-    dfa_direction_flags = parser.add_argument_group('DFA per Direction (\'m[0-9][1-9]=<dfa>\')')
+    dfa_direction_flags = parser.add_argument_group('DFAs per Direction (\'m[0-9][1-9]=<dfa>\')')
     dfa_direction_flags.add_argument(
                                     '-C',
                                     metavar='--cdfa',
@@ -1611,7 +1693,7 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='DFA expression to match against client data')
+                                    help='DFA expression to match against CTS data')
     dfa_direction_flags.add_argument(
                                     '-S',
                                     metavar='--sdfa',
@@ -1619,7 +1701,7 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='DFA expression to match against server data')
+                                    help='DFA expression to match against STC data')
     dfa_direction_flags.add_argument(
                                     '-A',
                                     metavar='--adfa',
@@ -1627,8 +1709,33 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='DFA expression to match against any data')
+                                    help='DFA expression to match against ANY data')
 
+    yara_direction_flags = parser.add_argument_group('Yara Rules per Direction')
+    yara_direction_flags.add_argument(
+                                    '-P',
+                                    metavar='--cyararules',
+                                    dest='cyararules',
+                                    default=[],
+                                    action='append',
+                                    required=False,
+                                    help='Yara rules to match on CTS data')
+    yara_direction_flags.add_argument(
+                                    '-Q',
+                                    metavar='--syararules',
+                                    dest='syararules',
+                                    default=[],
+                                    action='append',
+                                    required=False,
+                                    help='Yara rules to match on STC data')
+    yara_direction_flags.add_argument(
+                                    '-R',
+                                    metavar='--ayararules',
+                                    dest='ayararules',
+                                    default=[],
+                                    action='append',
+                                    required=False,
+                                    help='Yara rules to match on ANY data')
     parser.add_argument(
                                     '-X',
                                     metavar='--dfaexpr',
@@ -1920,6 +2027,24 @@ def main():
 
                 del memberids[-1]
                 configopts['dfaexpression'] = ' '.join(memberids)
+
+    if yaraengine:
+        if args.cyararules:
+            if 'yara' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('yara')
+            for c in args.cyararules:
+                if os.path.isfile(c): configopts['ctsyararules'][yara.compile(c)] = { 'filepath': c }
+
+        if args.syararules:
+            if 'yara' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('yara')
+            for s in args.syararules:
+                if os.path.isfile(s): configopts['stcyararules'][yara.compile(s)] = { 'filepath': s }
+
+        if args.ayararules:
+            if 'yara' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('yara')
+            for a in args.ayararules:
+                if os.path.isfile(a):
+                    configopts['ctsyararules'][yara.compile(a)] = { 'filepath': a }
+                    configopts['stcyararules'][yara.compile(a)] = { 'filepath': a }
 
     if args.fuzzminthreshold >= 1 and args.fuzzminthreshold <= 100:
         configopts['fuzzminthreshold'] = args.fuzzminthreshold

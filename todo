@@ -16,7 +16,7 @@
 	[x] fuzzy
 	[x] dfa
 	[x] libemu
-	[ ] yara (peid/clamav)
+	[x] yara (peid/clamav)
 [x] udp stream tracking (cts/stc/any)
 [x] show matching tcp packet ids (handy when pattern spans many packets)
 [ ] ip/tcp/udp header checks
@@ -27,4 +27,5 @@
 [ ] dfa + regex together (m01 with r01, m02 with r02, ...)
 [ ] shellcode inspection should enable disassembled output (should auto include a new shellcode outmode)
 [ ] include packet size when displaying match range
+[ ] sequence diagram for matched streams (nodes, data flow, packet ids, streamids, data size, ...)
 
