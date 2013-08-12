@@ -7,7 +7,7 @@ __license__ = 'CC-BY-SA 3.0'
 __status__  = 'Development'
 
 
-import os, sys, shutil, argparse, datetime
+import os, sys, shutil, argparse, datetime, operator
 
 try: import nids
 except ImportError, ex:
@@ -23,6 +23,13 @@ try:
 except ImportError, ex:
     import re
     regexengine = 're'
+
+try:
+    from fuzzywuzzy import fuzz
+    fuzzengine = 'fuzzywuzzy'
+except ImportError, ex:
+    print '[!] Import failed: %s' % (ex)
+    fuzzengine = None
 
 try:
     from pydfa.pydfa import *
@@ -56,6 +63,9 @@ configopts = {
 
             'ctsregexes': [],
             'stcregexes': [],
+
+            'ctsfuzzpatterns': [],
+            'stcfuzzpatterns': [],
 
             'ctsdfas': {},
             'stcdfas': {},
@@ -99,6 +109,7 @@ configopts = {
             'useoroperator': False,
 
             'reflags': 0,
+            'fuzzminthreshold': 75,
             'igncase': False,
             'multiline': False,
 
@@ -158,16 +169,8 @@ def handleudp(addr, payload, pkt):
 
     inspectcts = False
     inspectstc = False
-    if len(configopts['ctsregexes']) > 0: inspectcts = True
-    if len(configopts['stcregexes']) > 0: inspectstc = True
-
-    if not inspectcts:
-        for dfa in configopts['ctsdfas']:
-                inspectcts = True
-
-    if not inspectstc:
-        for dfa in configopts['stcdfas']:
-                inspectstc = True
+    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsfuzzpatterns']) > 0 or len(configopts['ctsdfas']) > 0: inspectcts = True
+    if len(configopts['stcregexes']) > 0 or len(configopts['stcfuzzpatterns']) > 0 or len(configopts['stcdfas']) > 0: inspectstc = True
 
     if isudpcts(addr):
         if inspectcts or 'shellcode' in configopts['inspectionmodes'] or configopts['linemode']:
@@ -201,8 +204,30 @@ def handleudp(addr, payload, pkt):
                                     }
                             })
 
-    if direction == 'CTS': openudpflows[key]['ctsdatasize'] += count
-    elif direction == 'STC': openudpflows[key]['stcdatasize'] += count
+    regexes = []
+    fuzzpatterns = []
+    timestamp = datetime.datetime.fromtimestamp(nids.get_pkt_ts()).strftime('%H:%M:%S | %Y/%m/%d')
+
+    if direction == 'CTS':
+        openudpflows[key]['ctsdatasize'] += count
+        if regexengine:
+            for regex in configopts['ctsregexes']:
+                regexes.append(regex)
+
+        if fuzzengine:
+            for fuzzpattern in configopts['ctsfuzzpatterns']:
+                fuzzpatterns.append(fuzzpattern)
+
+    elif direction == 'STC':
+        openudpflows[key]['stcdatasize'] += count
+        if regexengine:
+            for regex in configopts['stcregexes']:
+                regexes.append(regex)
+
+        if fuzzengine:
+            for fuzzpattern in configopts['stcfuzzpatterns']:
+                fuzzpatterns.append(fuzzpattern)
+
 
     if configopts['verbose']:
         print '[DEBUG] handleudp - [UDP#%08d] %s %s %s [%dB] (TRACKED: %d) (CTS: %dB | STC: %dB | TOT: %dB)' % (
@@ -235,16 +260,6 @@ def handleudp(addr, payload, pkt):
                             configopts['inspudppacketct'],
                             configopts['maxinsppackets'])
             return
-
-    regexes = []
-    timestamp = datetime.datetime.fromtimestamp(nids.get_pkt_ts()).strftime('%H:%M:%S | %Y/%m/%d')
-
-    if regexengine:
-        for regex in configopts['ctsregexes']:
-            regexes.append(regex)
-        for regex in configopts['stcregexes']:
-            regexes.append(regex)
-    else: regexes = []
 
     configopts['inspudppacketct'] += 1
 
@@ -283,7 +298,7 @@ def handleudp(addr, payload, pkt):
                 depth,
                 inspdatalen)
 
-    matched = inspect('UDP', inspdata, inspdatalen, regexes, addrkey, direction)
+    matched = inspect('UDP', inspdata, inspdatalen, regexes, fuzzpatterns, addrkey, direction)
 
     if matched:
         openudpflows[key]['matches'] += 1
@@ -312,7 +327,7 @@ def handleudp(addr, payload, pkt):
 
         matchstats['addr'] = addrkey
         showudpmatches(data[matchstats['start']:matchstats['end']])
-#       del openudpflows[key]
+        #del openudpflows[key]
 
 
 def showudpmatches(data):
@@ -435,8 +450,8 @@ def showudpmatches(data):
     configopts['disppacketct'] += 1
 
 
-def inspect(proto, data, datalen, regexes, addrkey, direction):
-    global configopts, opentcpflows, openudpflows,  matchstats, dfapartialmatches, regexengine, shellcodeengine, dfaengine
+def inspect(proto, data, datalen, regexes, fuzzpatterns, addrkey, direction):
+    global configopts, opentcpflows, openudpflows, matchstats, dfapartialmatches, regexengine, shellcodeengine, dfaengine
 
     skip = False
     matched = False
@@ -505,6 +520,51 @@ def inspect(proto, data, datalen, regexes, addrkey, direction):
                         dst,
                         dport,
                         getregexpattern(regex))
+
+    if 'fuzzy' in configopts['inspectionmodes']:
+        for pattern in fuzzpatterns:
+            partialratio = fuzz.partial_ratio(data, pattern)
+
+            if partialratio >= configopts['fuzzminthreshold']:
+                if not configopts['invertmatch']:
+                    matched = True
+                    matchstr = 'matches'
+                    matchreason = '>='
+                else:
+                    matched = False
+                    matchstr = 'doesnot match'
+                    matchreason = '|'
+            else:
+                if configopts['invertmatch']:
+                    matched = True
+                    matchstr = 'matches'
+                    matchreason = '|'
+                else:
+                    matched = False
+                    matchstr = 'doesnot match'
+                    matchreason = '<'
+
+            if configopts['verbose']:
+                print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s %s \'%s\' (ratio: %d %s threshold: %d)' % (
+                        proto,
+                        id,
+                        src,
+                        sport,
+                        dst,
+                        dport,
+                        matchstr,
+                        pattern,
+                        partialratio,
+                        matchreason,
+                        configopts['fuzzminthreshold'])
+
+            if matched:
+                matchstats['detectiontype'] = 'fuzzy'
+                matchstats['fuzzpattern'] = pattern
+                matchstats['start'] = 0
+                matchstats['end'] = datalen
+                matchstats['matchsize'] = matchstats['end'] - matchstats['start']
+                return True
 
     dfas = {}
     if 'dfa' in configopts['inspectionmodes']:
@@ -858,27 +918,28 @@ def handletcp(tcp):
             return
 
     regexes = []
-    dfas = []
+    fuzzpatterns = []
     timestamp = datetime.datetime.fromtimestamp(nids.get_pkt_ts()).strftime('%H:%M:%S | %Y/%m/%d')
     endstates = [ nids.NIDS_CLOSE, nids.NIDS_TIMED_OUT, nids.NIDS_RESET ]
 
     inspectcts = False
     inspectstc = False
-    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsdfas']) > 0: inspectcts = True
-    if len(configopts['stcregexes']) > 0 or len(configopts['stcdfas']) > 0: inspectstc = True
+    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsfuzzpatterns']) > 0 or len(configopts['ctsdfas']) > 0: inspectcts = True
+    if len(configopts['stcregexes']) > 0 or len(configopts['stcfuzzpatterns']) > 0 or len(configopts['stcdfas']) > 0: inspectstc = True
 
     if tcp.nids_state == nids.NIDS_JUST_EST:
         if addrkey not in opentcpflows:
             configopts['streamct'] += 1
+            configopts['insptcpstreamct'] += 1
 
             opentcpflows.update({addrkey:{
-                                            'id':configopts['streamct'],
-                                            'totdatasize':0,
-                                            'insppackets':0,
-                                            'ctspacketlendict':{},
-                                            'stcpacketlendict':{},
-                                            'ctsmatcheddfastats':{},
-                                            'stcmatcheddfastats':{}
+                                            'id': configopts['streamct'],
+                                            'totdatasize': 0,
+                                            'insppackets': 0,
+                                            'ctspacketlendict': {},
+                                            'stcpacketlendict': {},
+                                            'ctsmatcheddfastats': {},
+                                            'stcmatcheddfastats': {}
                                         }
                                 })
 
@@ -924,6 +985,8 @@ def handletcp(tcp):
     if tcp.nids_state == nids.NIDS_DATA:
         tcp.discard(0)
 
+        configopts['insptcppacketct'] += 1
+
         if tcp.server.count_new > 0:
             direction = 'CTS'
             directionflag = '>'
@@ -938,9 +1001,9 @@ def handletcp(tcp):
                 for regex in configopts['ctsregexes']:
                     regexes.append(regex)
 
-            if dfaengine and 'dfa' in configopts['inspectionmodes']:
-                for dfaobj in configopts['ctsdfas'].keys():
-                    dfas.append(dfaobj)
+            if fuzzengine and 'fuzzy' in configopts['inspectionmodes']:
+                for fuzzpattern in configopts['ctsfuzzpatterns']:
+                    fuzzpatterns.append(fuzzpattern)
 
         if tcp.client.count_new > 0:
             direction = 'STC'
@@ -956,9 +1019,9 @@ def handletcp(tcp):
                 for regex in configopts['stcregexes']:
                     regexes.append(regex)
 
-            if dfaengine and 'dfa' in configopts['inspectionmodes']:
-                for dfaobj in configopts['stcdfas'].keys():
-                    dfas.append(dfaobj)
+            if fuzzengine and 'fuzzy' in configopts['inspectionmodes']:
+                for fuzzpattern in configopts['stcfuzzpatterns']:
+                    fuzzpatterns.append(fuzzpattern)
 
         if configopts['verbose']:
             print '[DEBUG] handletcp - [TCP#%08d] %s:%s %s %s:%s [%dB] (CTS: %d | STC: %d | TOT: %d)' % (
@@ -972,9 +1035,6 @@ def handletcp(tcp):
                     tcp.server.count,
                     tcp.client.count,
                     opentcpflows[addrkey]['totdatasize'])
-
-        configopts['insptcppacketct'] += 1
-        configopts['insptcpstreamct'] = opentcpflows[addrkey]['id']
 
         if configopts['linemode']:
             matchstats['addr'] = addrkey
@@ -1019,7 +1079,7 @@ def handletcp(tcp):
         else:
             opentcpflows[addrkey]['stcpacketlendict'].update({ opentcpflows[addrkey]['insppackets']:inspdatalen })
 
-        matched = inspect('TCP', inspdata, inspdatalen, regexes, addrkey, direction)
+        matched = inspect('TCP', inspdata, inspdatalen, regexes, fuzzpatterns, addrkey, direction)
 
         if matched:
             if configopts['killtcp']: tcp.kill
@@ -1300,24 +1360,41 @@ def dumpopenstreams():
             ctsdatasize = value['ctsdatasize']
             stcdatasize = value['stcdatasize']
             totdatasize = value['totdatasize']
-            print '[DEBUG] [%08d] %s - %s [matches: %d] (CTS: %dB | STC: %dB | TOT: %dB)' % (
+            print '[DEBUG] [%08d] %s - %s (CTS: %dB | STC: %dB | TOT: %dB) [matches: %d]' % (
                     id,
                     key,
                     keydst,
-                    matches,
                     ctsdatasize,
                     stcdatasize,
-                    totdatasize)
+                    totdatasize,
+                    matches)
 
     if len(opentcpflows) > 0:
         print
         print '[DEBUG] Dumping open/tracked TCP streams: %d' % (len(opentcpflows))
 
         for (key, value) in opentcpflows.items():
-            ((src, sport), (dst, dport)) = key
             id = value['id']
-            datasize = value['totdatasize']
-            print '[DEBUG] [%08d] %s:%s - %s:%s [%dB]' % (id, src, sport, dst, dport, datasize)
+            ((src, sport), (dst, dport)) = key
+
+            ctsdatasize = 0
+            for size in value['ctspacketlendict'].values():
+                ctsdatasize += size
+
+            stcdatasize = 0
+            for size in value['stcpacketlendict'].values():
+                stcdatasize += size
+
+            totdatasize = ctsdatasize + stcdatasize
+            print '[DEBUG] [%08d] %s:%s - %s:%s (CTS: %dB | STC: %dB | TOT: %dB)' % (
+                    id,
+                    src,
+                    sport,
+                    dst,
+                    dport,
+                    ctsdatasize,
+                    stcdatasize,
+                    totdatasize)
 
     print
 
@@ -1339,37 +1416,51 @@ def dumpargsstats(configopts):
     print '%-30s' % '[DEBUG] Inspection Modes:', ;print '[',
     for mode in configopts['inspectionmodes']:
         if mode == 'regex': print '\'regex (%s)\'' % (regexengine),
+        if mode == 'fuzzy': print '\'fuzzy (%s)\'' % (fuzzengine),
         if mode == 'dfa': print '\'dfa (%s)\'' % (dfaengine),
         if mode == 'shellcode': print '\'shellcode (%s)\'' % (shellcodeengine),
     print ']'
 
-    print '%-30s' % '[DEBUG] CTS regex:', ; print '[ %d |' % (len(configopts['ctsregexes'])),
-    for c in configopts['ctsregexes']:
-        print '\'%s\'' % getregexpattern(c),
-    print ']'
+    if 'regex' in configopts['inspectionmodes']:
+        print '%-30s' % '[DEBUG] CTS regex:', ; print '[ %d |' % (len(configopts['ctsregexes'])),
+        for c in configopts['ctsregexes']:
+            print '\'%s\'' % getregexpattern(c),
+        print ']'
 
-    print '%-30s' % '[DEBUG] STC regex:', ; print '[ %d |' % (len(configopts['stcregexes'])),
-    for s in configopts['stcregexes']:
-        print '\'%s\'' % getregexpattern(s),
-    print ']'
+        print '%-30s' % '[DEBUG] STC regex:', ; print '[ %d |' % (len(configopts['stcregexes'])),
+        for s in configopts['stcregexes']:
+            print '\'%s\'' % getregexpattern(s),
+        print ']'
 
-    print '%-30s' % '[DEBUG] RE stats:', ; print '[ Flags: %d - (' % (configopts['reflags']),
-    if configopts['igncase']: print 'ignorecase',
-    if configopts['multiline']: print 'multiline',
-    print ') ]'
+        print '%-30s' % '[DEBUG] RE stats:', ; print '[ Flags: %d - (' % (configopts['reflags']),
+        if configopts['igncase']: print 'ignorecase',
+        if configopts['multiline']: print 'multiline',
+        print ') ]'
 
-    print '%-30s' % '[DEBUG] CTS dfa:', ; print '[ %d |' % (len(configopts['ctsdfas'])),
-    for c in configopts['ctsdfas']:
-        print '\'%s\'' % configopts['ctsdfas'][c]['dfapattern'],
-    print ']'
+    if 'fuzzy' in configopts['inspectionmodes']:
+        print '%-30s' % '[DEBUG] CTS fuzz patterns:', ; print '[ %d |' % (len(configopts['ctsfuzzpatterns'])),
+        for c in configopts['ctsfuzzpatterns']:
+            print '\'%s\'' % (c),
+        print ']'
 
-    print '%-30s' % '[DEBUG] STC dfa:', ; print '[ %d |' % (len(configopts['stcdfas'])),
-    for s in configopts['stcdfas']:
-        print '\'%s\'' % configopts['stcdfas'][s]['dfapattern'],
-    print ']'
+        print '%-30s' % '[DEBUG] STC fuzz patterns:', ; print '[ %d |' % (len(configopts['stcfuzzpatterns'])),
+        for s in configopts['stcfuzzpatterns']:
+            print '\'%s\'' % (s),
+        print ']'
 
-    print '%-30s' % '[DEBUG] DFA expression:',
-    print '[ \'%s\' ]' % (configopts['dfaexpression'])
+    if 'dfa' in configopts['inspectionmodes']:
+        print '%-30s' % '[DEBUG] CTS dfa:', ; print '[ %d |' % (len(configopts['ctsdfas'])),
+        for c in configopts['ctsdfas']:
+            print '\'%s\'' % (configopts['ctsdfas'][c]['dfapattern']),
+        print ']'
+
+        print '%-30s' % '[DEBUG] STC dfa:', ; print '[ %d |' % (len(configopts['stcdfas'])),
+        for s in configopts['stcdfas']:
+            print '\'%s\'' % (configopts['stcdfas'][s]['dfapattern']),
+        print ']'
+
+        print '%-30s' % '[DEBUG] DFA expression:',
+        print '[ \'%s\' ]' % (configopts['dfaexpression'])
 
     print '%-30s' % '[DEBUG] Inspection limits:',
     print '[ Streams: %d | Packets: %d | Offset: %d | Depth: %d ]' % (
@@ -1452,7 +1543,7 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='regex to match against client stream')
+                                    help='regex to match against client data')
     regex_direction_flags.add_argument(
                                     '-s',
                                     metavar='--sregex',
@@ -1460,7 +1551,7 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='regex to match against server stream')
+                                    help='regex to match against server data')
     regex_direction_flags.add_argument(
                                     '-a',
                                     metavar='--aregex',
@@ -1468,42 +1559,7 @@ def main():
                                     default=[],
                                     action='append',
                                     required=False,
-                                    help='regex to match against any stream')
-
-
-    dfa_direction_flags = parser.add_argument_group('DFA per Direction (\'m[0-9][1-9]=<dfa>\')')
-    dfa_direction_flags.add_argument(
-                                    '-C',
-                                    metavar='--cdfa',
-                                    dest='cdfas',
-                                    default=[],
-                                    action='append',
-                                    required=False,
-                                    help='DFA expression to match against client stream')
-    dfa_direction_flags.add_argument(
-                                    '-S',
-                                    metavar='--sdfa',
-                                    dest='sdfas',
-                                    default=[],
-                                    action='append',
-                                    required=False,
-                                    help='DFA expression to match against server stream')
-    dfa_direction_flags.add_argument(
-                                    '-A',
-                                    metavar='--adfa',
-                                    dest='adfas',
-                                    default=[],
-                                    action='append',
-                                    required=False,
-                                    help='DFA expression to match against any stream')
-    parser.add_argument(
-                                    '-X',
-                                    metavar='--dfaexpr',
-                                    dest='dfaexpr',
-                                    default=None,
-                                    action='store',
-                                    required=False,
-                                    help='expression to test chain members')
+                                    help='regex to match against any data')
 
     regex_flags = parser.add_argument_group('RegEx Flags')
     regex_flags.add_argument(
@@ -1520,6 +1576,67 @@ def main():
                                     action='store_false',
                                     required=False,
                                     help='disable multiline match')
+
+    fuzzy_direction_flags = parser.add_argument_group('Fuzzy Match per Direction')
+    fuzzy_direction_flags.add_argument(
+                                    '-G',
+                                    metavar='--cfuzz',
+                                    dest='cfuzz',
+                                    default=[],
+                                    action='append',
+                                    required=False,
+                                    help='string to fuzzy match against client data')
+    fuzzy_direction_flags.add_argument(
+                                    '-H',
+                                    metavar='--sfuzz',
+                                    dest='sfuzz',
+                                    default=[],
+                                    action='append',
+                                    required=False,
+                                    help='string to fuzzy match against server data')
+    fuzzy_direction_flags.add_argument(
+                                    '-I',
+                                    metavar='--afuzz',
+                                    dest='afuzz',
+                                    default=[],
+                                    action='append',
+                                    required=False,
+                                    help='string to fuzzy match against any data')
+
+    dfa_direction_flags = parser.add_argument_group('DFA per Direction (\'m[0-9][1-9]=<dfa>\')')
+    dfa_direction_flags.add_argument(
+                                    '-C',
+                                    metavar='--cdfa',
+                                    dest='cdfas',
+                                    default=[],
+                                    action='append',
+                                    required=False,
+                                    help='DFA expression to match against client data')
+    dfa_direction_flags.add_argument(
+                                    '-S',
+                                    metavar='--sdfa',
+                                    dest='sdfas',
+                                    default=[],
+                                    action='append',
+                                    required=False,
+                                    help='DFA expression to match against server data')
+    dfa_direction_flags.add_argument(
+                                    '-A',
+                                    metavar='--adfa',
+                                    dest='adfas',
+                                    default=[],
+                                    action='append',
+                                    required=False,
+                                    help='DFA expression to match against any data')
+
+    parser.add_argument(
+                                    '-X',
+                                    metavar='--dfaexpr',
+                                    dest='dfaexpr',
+                                    default=None,
+                                    action='store',
+                                    required=False,
+                                    help='expression to test chain members')
 
     content_modifiers = parser.add_argument_group('Content Modifiers')
     content_modifiers.add_argument(
@@ -1626,6 +1743,15 @@ def main():
                                     nargs='?',
                                     help='generate DFA transitions graph')
     misc_options.add_argument(
+                                    '-r',
+                                    metavar='fuzzminthreshold',
+                                    dest='fuzzminthreshold',
+                                    type=int,
+                                    default=75,
+                                    action='store',
+                                    required=False,
+                                    help='threshold for fuzzy match (1-100)')
+    misc_options.add_argument(
                                     '-l',
                                     dest='boolop',
                                     default=configopts['useoroperator'],
@@ -1718,6 +1844,23 @@ def main():
                 configopts['ctsregexes'].append(re.compile(a, configopts['reflags']))
                 configopts['stcregexes'].append(re.compile(a, configopts['reflags']))
 
+    if fuzzengine:
+        if args.cfuzz:
+            if 'fuzzy' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('fuzzy')
+            for c in args.cfuzz:
+                configopts['ctsfuzzpatterns'].append(c)
+
+        if args.sfuzz:
+            if 'fuzzy' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('fuzzy')
+            for s in args.sfuzz:
+                configopts['stcfuzzpatterns'].append(s)
+
+        if args.afuzz:
+            if 'fuzzy' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('fuzzy')
+            for a in args.afuzz:
+                configopts['ctsfuzzpatterns'].append(a)
+                configopts['stcfuzzpatterns'].append(a)
+
     if dfaengine:
         if args.cdfas:
             if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
@@ -1777,6 +1920,9 @@ def main():
 
                 del memberids[-1]
                 configopts['dfaexpression'] = ' '.join(memberids)
+
+    if args.fuzzminthreshold >= 1 and args.fuzzminthreshold <= 100:
+        configopts['fuzzminthreshold'] = args.fuzzminthreshold
 
     if args.offset:
         configopts['offset'] = int(args.offset)
