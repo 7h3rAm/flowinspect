@@ -662,13 +662,16 @@ def inspect(proto, data, datalen, regexes, addrkey, direction):
                         exprlist.append('(')
                         exprlist.append(token)
                         exprlist.append(')')
-                    elif '(' in token:
+                    elif '(' in token and token != '(':
                         exprlist.append('(')
                         exprlist.append(token.replace('(', ''))
-                    elif ')' in token:
+                    elif ')' in token and token != ')':
                         exprlist.append(token.replace(')', ''))
                         exprlist.append(')')
-                    else: exprlist.append(token)
+                    elif token != '':
+                        exprlist.append(token)
+
+                configopts['dfaexpression'] = ' '.join(exprlist)
 
                 exprboolean = []
                 for token in exprlist:
@@ -729,7 +732,7 @@ def inspect(proto, data, datalen, regexes, addrkey, direction):
                                             'end': datalen,
                                             'matchsize': datalen,
                                             'direction': direction,
-                                            'directionflag':None
+                                            'directionflag': None
                                         }
                                 }
 
@@ -762,10 +765,6 @@ def inspect(proto, data, datalen, regexes, addrkey, direction):
                         dport,
                         memberid,
                         dfapattern)
-
-# disabled while testing nss chunked ctx. if shellcode test is requested alongwith dfa match, shellcode won't be tested even when dfa match failed
-# as such disabled below return for now. needs testing
-#       return configopts['dfafinalmatch']
 
     if 'shellcode' in configopts['inspectionmodes']:
         emulator = emu.Emulator(1024)

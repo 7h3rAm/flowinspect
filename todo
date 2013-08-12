@@ -12,7 +12,7 @@
 [x] stop tracking a stream when a match is found (tcp.collect = 0)
 [ ] pcap write (with mods to header fields, regex replace, ...)
 [ ] inspection modes:
-	[ ] search
+	[ ] fuzzy
 	[x] dfa
 	[x] regex
 	[x] libemu
@@ -25,4 +25,5 @@
 [x] boolean expressions parser
 [ ] dfa + regex together (m01 with r01, m02 with r02, ...)
 [ ] shellcode inspection should enable disassembled output (should auto include a new shellcode outmode)
+[ ] include packet size when displaying match range
 
