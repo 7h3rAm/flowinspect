@@ -855,10 +855,12 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
         emulator.prepare(data, offset)
 
         if not emulator.test() and emulator.emu_profile_output:
+            print emulator.emu_profile_output.decode('utf8')
+
             emulator.free()
             matchstats['detectiontype'] = 'shellcode'
             matchstats['shellcodeoffset'] = offset
-            matchstats['start'] = 0
+            matchstats['start'] = offset
             matchstats['end'] = datalen
             matchstats['matchsize'] = matchstats['end'] - matchstats['start']
             if configopts['verbose']:
@@ -1857,7 +1859,7 @@ def main():
                                     default=75,
                                     action='store',
                                     required=False,
-                                    help='threshold for fuzzy match (1-100)')
+                                    help='threshold for fuzzy match (1-100) - default 75')
     misc_options.add_argument(
                                     '-l',
                                     dest='boolop',

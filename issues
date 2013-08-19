@@ -6,5 +6,6 @@
 [ ] merge show{tcp, udp}matches
 [ ] code cleanup { delete object when done using, remove duplicate/unnecessary objects, ... }
 [ ] make memberids optional
-[ ] regex flags - re.[ILMSUX
-]
+[ ] regex flags - re.[ILMSUXi]
+[ ] offset corrupts the packet span calculation; span offsets don't include custom offset (2 instead of 1002)
+
