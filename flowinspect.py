@@ -53,6 +53,14 @@ except ImportError, ex:
     print '[!] Import failed: %s' % (ex)
     yaraengine = None
 
+try:
+    import FSA
+    import reCompiler
+    fsaengine = 'pyFSA'
+except ImportError, ex:
+    print '[!] Import failed: %s' % (ex)
+    fsaengine = None
+
 
 sys.dont_write_bytecode = True
 from utils import *
@@ -473,7 +481,7 @@ def showudpmatches(data):
 
 
 def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrkey, direction):
-    global configopts, opentcpflows, openudpflows, matchstats, dfapartialmatches, regexengine, shellcodeengine, dfaengine
+    global configopts, opentcpflows, openudpflows, matchstats, dfapartialmatches, regexengine, shellcodeengine, dfaengine, fsaengine
 
     skip = False
     matched = False
@@ -523,6 +531,28 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                             dst,
                             dport,
                             getregexpattern(regex))
+
+                    if fsaengine:
+                        graphexpression = getregexpattern(regex)
+                        fsaobj = reCompiler.compileRE(graphexpression)
+                        graphstatecount = len(fsaobj.states)
+                        graphflow = '[%s#%08d] %s:%s - %s:%s match @ %s[%d:%d] - %dB' % (
+                                    proto,
+                                    id,
+                                    src,
+                                    sport,
+                                    dst,
+                                    dport,
+                                    direction,
+                                    0,
+                                    datalen,
+                                    datalen)
+
+                        graphtitle = 'Expression: \'%s\' | State Count: %d\nFlow: %s' % (graphexpression, graphstatecount, graphflow)
+
+                        #if configopts['graph']:
+                            #graphregextransitions(graphtitle, '%s-%08d-%s.%s-%s.%s' % (proto, id, src, sport, dst, dport), fsaobj)
+
                 return True
             else:
                 if configopts['invertmatch']:
@@ -780,9 +810,9 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                             evalboolean,
                             configopts['dfafinalmatch'])
 
-                graphtitle = 'Expression: \'%s\' | State Count: %d\nFlow: [%s#%08d] %s:%s - %s:%s match @ %s[%d:%d] - %dB' % (
-                            dfapattern,
-                            dfaobject.nQ,
+                graphexpression = dfapattern
+                graphstatecount = dfaobject.nQ
+                graphflow = '[%s#%08d] %s:%s - %s:%s match @ %s[%d:%d] - %dB' % (
                             proto,
                             id,
                             src,
@@ -794,12 +824,14 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                             datalen,
                             datalen)
 
+                graphtitle = 'Expression: \'%s\' | State Count: %d\nFlow: %s' % (graphexpression, graphstatecount, graphflow)
+
                 if configopts['dfafinalmatch']:
                     configopts['dfapartialmatch'] = False
                     matchstats['dfaexpression'] = configopts['dfaexpression']
 
                     if configopts['graph']:
-                        graphdfatransitions(graphtitle, '%s-%08d-%s.%s-%s.%s-%s' % (proto, id, src, sport, dst, dport, memberid), dfapattern, dfaobject)
+                        graphdfatransitions(graphtitle, '%s-%08d-%s.%s-%s.%s-%s' % (proto, id, src, sport, dst, dport, memberid), dfaobject)
 
                     return configopts['dfafinalmatch']
                 else:
@@ -834,7 +866,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                         showudpmatches(data)
 
                     if configopts['graph']:
-                        graphdfatransitions(graphtitle, '%s-%08d-%s.%s-%s.%s-%s' % (proto, id, src, sport, dst, dport, memberid), dfapattern, dfaobject)
+                        graphdfatransitions(graphtitle, '%s-%08d-%s.%s-%s.%s-%s' % (proto, id, src, sport, dst, dport, memberid), dfaobject)
 
             elif configopts['verbose']:
                 finalmatch = False
@@ -918,7 +950,37 @@ def yaramatchcallback(data):
     yara.CALLBACK_ABORT
 
 
-def graphdfatransitions(graphtitle, filename, dfapattern, dfaobject):
+def graphregextransitions(graphtitle, filename, fsaobject):
+    global configopts
+
+    if configopts['graph']:
+        class NullDevice():
+            def write(self, s): pass
+
+        extension = 'png'
+        graphfilename = '%s.%s' % (filename, extension)
+        dotfiledata = fsaobject.toDotString()
+
+        fo = open('/tmp/flowinspect-dotfile.dot', 'w')
+        fo.write(dotfiledata)
+        fo.close()
+        dotcmd = 'dot -T%s /tmp/flowinspect-dotfile.dot -o %s' % (extension, graphfilename)
+        try:
+            os.system(dotcmd)
+            os.remove('/tmp/flowinspect-dotfile.dot')
+        except: pass
+
+        if configopts['graphdir'] != '.':
+            if not os.path.exists(configopts['graphdir']):
+                os.makedirs(configopts['graphdir'])
+            else:
+                if os.path.exists(os.path.join(configopts['graphdir'], graphfilename)):
+                    os.remove(os.path.join(configopts['graphdir'], graphfilename))
+
+            shutil.move(graphfilename, configopts['graphdir'])
+
+
+def graphdfatransitions(graphtitle, filename, dfaobject):
     global configopts
 
     if configopts['graph']:
@@ -1569,7 +1631,7 @@ def dumpargsstats(configopts):
         if 'hex' in configopts['outmodes']: print '\'hex\'',
         if 'print' in configopts['outmodes']: print '\'print\'',
         if 'raw' in configopts['outmodes']: print '\'raw\'',
-        if 'graph' in configopts['outmodes']: print '\'graph\'',
+        if 'graph' in configopts['outmodes']: print '\'graph: %s\'' % (configopts['graphdir']),
         if configopts['writelogs']: print '\'write: %s\'' % (configopts['logdir']),
     print ']'
 
@@ -2091,6 +2153,7 @@ def main():
 
     if args.graph != '':
         configopts['graph'] = True
+        configopts['outmodes'].append('graph')
         if args.graph != None:
             configopts['graphdir'] = args.graph
         else:
