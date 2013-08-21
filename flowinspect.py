@@ -135,6 +135,7 @@ configopts = {
             'invertmatch': False,
             'killtcp': False,
             'verbose': False,
+            'emuprofile': False,
             'graph': False,
             'outmodes': [],
             'logdir': '.',
@@ -369,10 +370,10 @@ def showudpmatches(data):
     if configopts['maxdispbytes'] > 0: maxdispbytes = configopts['maxdispbytes']
     else: maxdispbytes = len(data)
 
-    filename = '%s/%s-%08d.%s.%s.%s.%s' % (configopts['logdir'], proto, configopts['packetct'], src, sport, dst, dport)
+    filename = '%s/%s-%08d-%s.%s-%s.%s-%s' % (configopts['logdir'], proto, configopts['packetct'], src, sport, dst, dport, matchstats['direction'])
 
     if configopts['writelogs']:
-        writetofile(proto, configopts['packetct'], src, sport, dst, dport, data)
+        writetofile(filename, data)
 
         if configopts['verbose']:
             print '[DEBUG] showudpmatches - [UDP#%08d] Wrote %dB to %s/%s-%08d.%s.%s.%s.%s' % (
@@ -887,8 +888,6 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
         emulator.prepare(data, offset)
 
         if not emulator.test() and emulator.emu_profile_output:
-            print emulator.emu_profile_output.decode('utf8')
-
             emulator.free()
             matchstats['detectiontype'] = 'shellcode'
             matchstats['shellcodeoffset'] = offset
@@ -903,6 +902,24 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                         sport,
                         dst,
                         dport)
+
+            if configopts['emuprofile']:
+                filename = '%s-%08d-%s.%s-%s.%s-%s.emuprofile' % (
+                            proto,
+                            id,
+                            src,
+                            sport,
+                            dst,
+                            dport,
+                            direction)
+
+                data = emulator.emu_profile_output.decode('utf8')
+                fo = open(filename, 'w')
+                fo.write(data)
+                fo.close()
+                if configopts['verbose']:
+                    print '[DEBUG] inspect - Wrote %d byte emulator profile output to %s' % (len(data), filename)
+
             return True
 
         elif configopts['verbose']: print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s doesnot contain shellcode' % (
@@ -1293,10 +1310,10 @@ def showtcpmatches(data):
 
     else:
         ((src, sport), (dst, dport)) = matchstats['addr']
-        filename = '%s/%s-%08d.%s.%s.%s.%s' % (configopts['logdir'], proto, opentcpflows[matchstats['addr']]['id'], src, sport, dst, dport)
+        filename = '%s/%s-%08d-%s.%s-%s.%s-%s' % (configopts['logdir'], proto, opentcpflows[matchstats['addr']]['id'], src, sport, dst, dport, matchstats['direction'])
 
         if configopts['writelogs']:
-            writetofile(proto, opentcpflows[matchstats['addr']]['id'], src, sport, dst, dport, data)
+            writetofile(filename, data)
 
             if configopts['verbose']:
                 print '[DEBUG] showtcpmatches - [TCP#%08d] Wrote %dB to %s' % (
@@ -1434,14 +1451,12 @@ def validatedfaexpr(expr):
     return (memberid.strip(), dfa.strip())
 
 
-def writetofile(proto, id, src, sport, dst, dport, data):
+def writetofile(filename, data):
     global configopts, opentcpflows
 
     try:
         if not os.path.isdir(configopts['logdir']): os.makedirs(configopts['logdir'])
     except OSError, oserr: print '[-] %s' % oserr
-
-    filename = '%s/%s-%08d-%s.%s-%s.%s' % (configopts['logdir'], proto, id, src, sport, dst, dport)
 
     try:
         if configopts['linemode']: file = open(filename, 'ab+')
@@ -1958,6 +1973,13 @@ def main():
                                     required=False,
                                     help='enable shellcode detection')
     misc_options.add_argument(
+                                    '-y',
+                                    dest='emuprofile',
+                                    default=False,
+                                    action='store_true',
+                                    required=False,
+                                    help='generate emulator profile for detected shellcode')
+    misc_options.add_argument(
                                     '-V',
                                     dest='verbose',
                                     default=False,
@@ -2161,6 +2183,9 @@ def main():
 
     if args.shellcode:
         configopts['inspectionmodes'].append('shellcode')
+
+    if args.emuprofile:
+        configopts['emuprofile'] = True
 
     if args.bpf:
         configopts['bpf'] = args.bpf

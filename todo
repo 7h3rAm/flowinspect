@@ -25,7 +25,6 @@
 [ ] boolean expressions parser for regex
 [x] boolean expressions parser for dfa
 [ ] dfa + regex together (m01 with r01, m02 with r02, ...)
-[ ] shellcode inspection should enable disassembled output (should auto include a new shellcode outmode)
-[ ] include packet size when displaying match range
+[x] shellcode inspection should enable disassembled output (should auto include a new shellcode outmode -> -y)
 [ ] sequence diagram for matched streams (nodes, data flow, packet ids, streamids, data size, ...)
 
