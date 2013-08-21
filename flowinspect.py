@@ -144,7 +144,10 @@ configopts = {
             'linemode': False,
 
             'regexengine': None,
-            'shellcodeengine': None
+            'shellcodeengine': None,
+
+            'dfalist': [],
+            'regexlist': []
         }
 
 matchstats = {
@@ -827,15 +830,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
                 graphtitle = 'Expression: \'%s\' | State Count: %d\nFlow: %s' % (graphexpression, graphstatecount, graphflow)
 
-                if configopts['dfafinalmatch']:
-                    configopts['dfapartialmatch'] = False
-                    matchstats['dfaexpression'] = configopts['dfaexpression']
-
-                    if configopts['graph']:
-                        graphdfatransitions(graphtitle, '%s-%08d-%s.%s-%s.%s-%s' % (proto, id, src, sport, dst, dport, memberid), dfaobject)
-
-                    return configopts['dfafinalmatch']
-                else:
+                if configopts['dfapartialmatch']:
                     configopts['dfapartialmatchmember'] = memberid
                     dfapartialmatches = {
                                     memberid: {
@@ -868,6 +863,15 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
                     if configopts['graph']:
                         graphdfatransitions(graphtitle, '%s-%08d-%s.%s-%s.%s-%s' % (proto, id, src, sport, dst, dport, memberid), dfaobject)
+
+                if configopts['dfafinalmatch']:
+                    configopts['dfapartialmatch'] = False
+                    matchstats['dfaexpression'] = configopts['dfaexpression']
+
+                    if configopts['graph']:
+                        graphdfatransitions(graphtitle, '%s-%08d-%s.%s-%s.%s-%s' % (proto, id, src, sport, dst, dport, memberid), dfaobject)
+
+                    return configopts['dfafinalmatch']
 
             elif configopts['verbose']:
                 finalmatch = False
@@ -918,7 +922,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 fo.write(data)
                 fo.close()
                 if configopts['verbose']:
-                    print '[DEBUG] inspect - Wrote %d byte emulator profile output to %s' % (len(data), filename)
+                    print '[DEBUG] inspect - [%s#%08d] Wrote %d byte emulator profile output to %s' % (proto, id, len(data), filename)
 
             return True
 
@@ -1441,15 +1445,17 @@ def showtcpmatches(data):
 
 
 def validatedfaexpr(expr):
-    if not re.search(r'm[0-9][0-9]\s*=\s*', expr):
-        print '[-] Incorrect DFA expression: \'%s\'' % (expr)
-        print '[-] DFA format: \'m[0-9][1-9]\s*=\s*<expr>\''
-        print
-        sys.exit(1)
+    global configopts
 
-    (memberid, dfa) =  expr.split('=', 1)
-    return (memberid.strip(), dfa.strip())
-
+    if re.search(r'^m[0-9][0-9]\s*=\s*', expr):
+        (memberid, dfa) =  expr.split('=', 1)
+        configopts['dfalist'].append(expr)
+        return (memberid.strip(), dfa.strip())
+    else:
+        memberct = len(configopts['dfalist'])
+        memberid = 'm%02d' % (memberct+1)
+        configopts['dfalist'].append(expr)
+        return (memberid, expr.strip())
 
 def writetofile(filename, data):
     global configopts, opentcpflows
@@ -1601,12 +1607,12 @@ def dumpargsstats(configopts):
     if 'dfa' in configopts['inspectionmodes']:
         print '%-30s' % '[DEBUG] CTS dfa:', ; print '[ %d |' % (len(configopts['ctsdfas'])),
         for c in configopts['ctsdfas']:
-            print '\'%s\'' % (configopts['ctsdfas'][c]['dfapattern']),
+            print '\'%s: %s\'' % (configopts['ctsdfas'][c]['memberid'], configopts['ctsdfas'][c]['dfapattern']),
         print ']'
 
         print '%-30s' % '[DEBUG] STC dfa:', ; print '[ %d |' % (len(configopts['stcdfas'])),
         for s in configopts['stcdfas']:
-            print '\'%s\'' % (configopts['stcdfas'][s]['dfapattern']),
+            print '\'%s: %s\'' % (configopts['stcdfas'][s]['memberid'], configopts['stcdfas'][s]['dfapattern']),
         print ']'
 
         print '%-30s' % '[DEBUG] DFA expression:',
@@ -2059,6 +2065,7 @@ def main():
             if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
             for c in args.cdfas:
                 (memberid, dfa) = validatedfaexpr(c)
+
                 configopts['ctsdfas'][Rexp(dfa)] = {
                                     'dfapattern':dfa,
                                     'memberid':memberid,
@@ -2069,6 +2076,7 @@ def main():
             if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
             for s in args.sdfas:
                 (memberid, dfa) = validatedfaexpr(s)
+
                 configopts['stcdfas'][Rexp(dfa)] = {
                                     'dfapattern':dfa,
                                     'memberid':memberid,
@@ -2079,6 +2087,7 @@ def main():
             if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
             for a in args.adfas:
                 (memberid, dfa) = validatedfaexpr(a)
+
                 configopts['ctsdfas'][Rexp(dfa)] = {
                                     'dfapattern':dfa,
                                     'memberid':memberid,
@@ -2100,16 +2109,18 @@ def main():
             else:
                 memberids = []
                 for dfa in configopts['ctsdfas'].keys():
-                    memberids.append(configopts['ctsdfas'][dfa]['memberid'])
-                    if configopts['useoroperator']: memberids.append('or')
-                    else: memberids.append('and')
-                    configopts['dfaexprmembers'].append(configopts['ctsdfas'][dfa]['memberid'])
+                    if configopts['ctsdfas'][dfa]['memberid'] not in memberids:
+                        memberids.append(configopts['ctsdfas'][dfa]['memberid'])
+                        if configopts['useoroperator']: memberids.append('or')
+                        else: memberids.append('and')
+                        configopts['dfaexprmembers'].append(configopts['ctsdfas'][dfa]['memberid'])
 
                 for dfa in configopts['stcdfas'].keys():
-                    memberids.append(configopts['stcdfas'][dfa]['memberid'])
-                    if configopts['useoroperator']: memberids.append('or')
-                    else: memberids.append('and')
-                    configopts['dfaexprmembers'].append(configopts['stcdfas'][dfa]['memberid'])
+                    if configopts['stcdfas'][dfa]['memberid'] not in memberids:
+                        memberids.append(configopts['stcdfas'][dfa]['memberid'])
+                        if configopts['useoroperator']: memberids.append('or')
+                        else: memberids.append('and')
+                        configopts['dfaexprmembers'].append(configopts['stcdfas'][dfa]['memberid'])
 
                 del memberids[-1]
                 configopts['dfaexpression'] = ' '.join(memberids)
