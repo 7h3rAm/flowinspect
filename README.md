@@ -127,12 +127,14 @@ EXAMPLES:
 Look at HTTP sessions:
 ```sh
 ./flowinspect.py -d eth0 -c "^(GET|POST|HEAD|PUT).*" -f "tcp and port 80" -o print
-```
 
+GET / HTTP/1.1
+User-Agent: curl/7.22.0 (i686-pc-linux-gnu) libcurl/7.22.0 OpenSSL/1.0.1 zlib/1.2.3.4 libidn/1.23 librtmp/2.3
+Host: www.google.com
+Accept: */*
 
-Quickly scan for Blackhole Exploit Kit infections (enable multiline match and restrict display to max 64B):
-```sh
-./flowinspect.py -d eth0 -c "/forum/links/(column|news)\.php\?\w+=(\d\w:?)+" -mb64
+[U] Processed: 0 | Matches: 0 | Shortest: 0B (#0) | Longest: 0B (#0)
+[T] Processed: 1 | Matches: 1 | Shortest: 164B (#1) | Longest: 164B (#1)
 ```
 
 
