@@ -12,4 +12,5 @@
 	[ ] CORE DUMP: ./flowinspect.py -p ../sigframework/PCAP-Generation-Tools/output/test.bin/HTTP_GET_raw_raw.pcap -C '.*ead2.googlesyndi.*' -C '.*test' -b32 -V -E
 	[ ] LOOP: ./flowinspect.py -p osx_bind_udp.pcap -E -V
 	[ ] rework on partial/final match display
+	[ ] invert match meta output should be more sensible
 

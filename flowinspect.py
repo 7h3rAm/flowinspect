@@ -24,15 +24,8 @@ except ImportError, ex:
     regexengine = 're'
 
 try:
-    from fuzzywuzzy import fuzz
-    fuzzengine = 'fuzzywuzzy'
-except ImportError, ex:
-    print '[!] Import failed: %s' % (ex)
-    fuzzengine = None
-
-try:
-    from pydfa.pydfa import *
-    from pydfa.graph import *
+    from pydfa.pydfa import Rexp
+    from pydfa.graph import FA
     dfaengine = 'pydfa'
 except ImportError, ex:
     print '[!] Import failed: %s' % (ex)
@@ -53,12 +46,11 @@ except ImportError, ex:
     yaraengine = None
 
 try:
-    import FSA
-    import reCompiler
-    fsaengine = 'pyFSA'
+    from fuzzywuzzy import fuzz
+    fuzzengine = 'fuzzywuzzy'
 except ImportError, ex:
     print '[!] Import failed: %s' % (ex)
-    fsaengine = None
+    fuzzengine = None
 
 
 sys.dont_write_bytecode = True
@@ -69,7 +61,7 @@ configopts = {
             'name': os.path.basename(sys.argv[0]),
             'version': '0.2',
             'desc': 'A tool for network traffic inspection',
-            'author': 'Ankur Tyagi (7h3rAm) @ Juniper Networks Security Research Group',
+            'author': 'Ankur Tyagi (7h3rAm [at] gmail [dot] com)',
 
             'pcap': None,
             'device': None,
@@ -535,27 +527,6 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                             dport,
                             getregexpattern(regex))
 
-                    if fsaengine:
-                        graphexpression = getregexpattern(regex)
-                        fsaobj = reCompiler.compileRE(graphexpression)
-                        graphstatecount = len(fsaobj.states)
-                        graphflow = '[%s#%08d] %s:%s - %s:%s match @ %s[%d:%d] - %dB' % (
-                                    proto,
-                                    id,
-                                    src,
-                                    sport,
-                                    dst,
-                                    dport,
-                                    direction,
-                                    0,
-                                    datalen,
-                                    datalen)
-
-                        graphtitle = 'Expression: \'%s\' | State Count: %d\nFlow: %s' % (graphexpression, graphstatecount, graphflow)
-
-                        #if configopts['graph']:
-                            #graphregextransitions(graphtitle, '%s-%08d-%s.%s-%s.%s' % (proto, id, src, sport, dst, dport), fsaobj)
-
                 return True
             else:
                 if configopts['invertmatch']:
@@ -935,6 +906,12 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
     if 'yara' in configopts['inspectionmodes']:
        for ruleobj in yararuleobjects:
+            matchstats['start'] = -1
+            matchstats['end'] = -1
+            matchstats['yararulenamespace'] = None
+            matchstats['yararulename'] = None
+            matchstats['yararulemeta'] = None
+
             matches = ruleobj.match(data=data, callback=yaramatchcallback)
 
             if matches:
@@ -951,6 +928,11 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                     if rule == ruleobj: matchstats['yararulefilepath'] = configopts['ctsyararules'][rule]['filepath']
                 for rule in configopts['stcyararules']:
                     if rule == ruleobj: matchstats['yararulefilepath'] = configopts['stcyararules'][rule]['filepath']
+
+                if matchstats['start'] == -1 and matchstats['end'] == -1:
+                    matchstats['start'] = 0
+                    matchstats['end'] = len(data)
+
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
                 return True
 
@@ -968,36 +950,6 @@ def yaramatchcallback(data):
         matchstats['end'] = start + len(matchstr)
 
     yara.CALLBACK_ABORT
-
-
-def graphregextransitions(graphtitle, filename, fsaobject):
-    global configopts
-
-    if configopts['graph']:
-        class NullDevice():
-            def write(self, s): pass
-
-        extension = 'png'
-        graphfilename = '%s.%s' % (filename, extension)
-        dotfiledata = fsaobject.toDotString()
-
-        fo = open('/tmp/flowinspect-dotfile.dot', 'w')
-        fo.write(dotfiledata)
-        fo.close()
-        dotcmd = 'dot -T%s /tmp/flowinspect-dotfile.dot -o %s' % (extension, graphfilename)
-        try:
-            os.system(dotcmd)
-            os.remove('/tmp/flowinspect-dotfile.dot')
-        except: pass
-
-        if configopts['graphdir'] != '.':
-            if not os.path.exists(configopts['graphdir']):
-                os.makedirs(configopts['graphdir'])
-            else:
-                if os.path.exists(os.path.join(configopts['graphdir'], graphfilename)):
-                    os.remove(os.path.join(configopts['graphdir'], graphfilename))
-
-            shutil.move(graphfilename, configopts['graphdir'])
 
 
 def graphdfatransitions(graphtitle, filename, dfaobject):
@@ -1328,6 +1280,8 @@ def showtcpmatches(data):
             if configopts['verbose']:
                 if matchstats['detectiontype'] == 'regex': pattern = getregexpattern(matchstats['regex'])
                 elif matchstats['detectiontype'] == 'dfa': pattern = matchstats['dfaexpression']
+                elif matchstats['detectiontype'] == 'fuzzy': pattern = matchstats['dfaexpression']
+                else: pattern = None
 
                 print '[DEBUG] showtcpmatches - [TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
                         opentcpflows[matchstats['addr']]['id'],
@@ -1727,15 +1681,15 @@ def main():
                                     required=False,
                                     help='regex to match against ANY data')
 
-    regex_flags = parser.add_argument_group('RegEx Flags')
-    regex_flags.add_argument(
+    regex_options = parser.add_argument_group('RegEx Options')
+    regex_options.add_argument(
                                     '-i',
                                     dest='igncase',
                                     default=False,
                                     action='store_true',
                                     required=False,
                                     help='ignore case')
-    regex_flags.add_argument(
+    regex_options.add_argument(
                                     '-m',
                                     dest='multiline',
                                     default=True,
@@ -1768,6 +1722,16 @@ def main():
                                     action='append',
                                     required=False,
                                     help='string to fuzzy match against ANY data')
+    fuzzy_options = parser.add_argument_group('Fuzzy Options')
+    fuzzy_options.add_argument(
+                                    '-r',
+                                    metavar='fuzzminthreshold',
+                                    dest='fuzzminthreshold',
+                                    type=int,
+                                    default=75,
+                                    action='store',
+                                    required=False,
+                                    help='threshold for fuzzy match (1-100) - default 75')
 
     dfa_direction_flags = parser.add_argument_group('DFAs per Direction (\'m[0-9][1-9]=<dfa>\')')
     dfa_direction_flags.add_argument(
@@ -1795,6 +1759,33 @@ def main():
                                     required=False,
                                     help='DFA expression to match against ANY data')
 
+    dfa_options = parser.add_argument_group('DFA Options')
+    dfa_options.add_argument(
+                                    '-l',
+                                    dest='boolop',
+                                    default=configopts['useoroperator'],
+                                    action='store_true',
+                                    required=False,
+                                    help='switch default boolean operator to \'or\'')
+    dfa_options.add_argument(
+                                    '-X',
+                                    metavar='--dfaexpr',
+                                    dest='dfaexpr',
+                                    default=None,
+                                    action='store',
+                                    required=False,
+                                    help='expression to test chain members')
+
+    dfa_options.add_argument(
+                                    '-g',
+                                    metavar='graphdir',
+                                    dest='graph',
+                                    default='',
+                                    action='store',
+                                    required=False,
+                                    nargs='?',
+                                    help='generate DFA transitions graph')
+
     yara_direction_flags = parser.add_argument_group('Yara Rules per Direction')
     yara_direction_flags.add_argument(
                                     '-P',
@@ -1820,14 +1811,22 @@ def main():
                                     action='append',
                                     required=False,
                                     help='Yara rules to match on ANY data')
-    parser.add_argument(
-                                    '-X',
-                                    metavar='--dfaexpr',
-                                    dest='dfaexpr',
-                                    default=None,
-                                    action='store',
+
+    shellcode_options = parser.add_argument_group('Shellcode Detection')
+    shellcode_options.add_argument(
+                                    '-M',
+                                    dest='shellcode',
+                                    default=False,
+                                    action='store_true',
                                     required=False,
-                                    help='expression to test chain members')
+                                    help='enable shellcode detection')
+    shellcode_options.add_argument(
+                                    '-y',
+                                    dest='emuprofile',
+                                    default=False,
+                                    action='store_true',
+                                    required=False,
+                                    help='generate emulator profile for detected shellcode')
 
     content_modifiers = parser.add_argument_group('Content Modifiers')
     content_modifiers.add_argument(
@@ -1913,7 +1912,7 @@ def main():
                                     action='append',
                                     default=[],
                                     required=False,
-                                    help='match output mode')
+                                    help='match output modes')
 
     misc_options = parser.add_argument_group('Misc. Options')
     misc_options.add_argument(
@@ -1925,37 +1924,19 @@ def main():
                                     required=False,
                                     help='BPF expression')
     misc_options.add_argument(
-                                    '-g',
-                                    metavar='graphdir',
-                                    dest='graph',
-                                    default='',
-                                    action='store',
-                                    required=False,
-                                    nargs='?',
-                                    help='generate DFA transitions graph')
-    misc_options.add_argument(
-                                    '-r',
-                                    metavar='fuzzminthreshold',
-                                    dest='fuzzminthreshold',
-                                    type=int,
-                                    default=75,
-                                    action='store',
-                                    required=False,
-                                    help='threshold for fuzzy match (1-100) - default 75')
-    misc_options.add_argument(
-                                    '-l',
-                                    dest='boolop',
-                                    default=configopts['useoroperator'],
-                                    action='store_true',
-                                    required=False,
-                                    help='switch default boolean operator to \'or\'')
-    misc_options.add_argument(
                                     '-v',
                                     dest='invmatch',
                                     default=False,
                                     action='store_true',
                                     required=False,
                                     help='invert match')
+    misc_options.add_argument(
+                                    '-V',
+                                    dest='verbose',
+                                    default=False,
+                                    action='store_true',
+                                    required=False,
+                                    help='verbose output')
     misc_options.add_argument(
                                     '-k',
                                     dest='killtcp',
@@ -1970,27 +1951,6 @@ def main():
                                     action='store_true',
                                     required=False,
                                     help='confirm before initializing NIDS')
-    misc_options.add_argument(
-                                    '-M',
-                                    dest='shellcode',
-                                    default=False,
-                                    action='store_true',
-                                    required=False,
-                                    help='enable shellcode detection')
-    misc_options.add_argument(
-                                    '-y',
-                                    dest='emuprofile',
-                                    default=False,
-                                    action='store_true',
-                                    required=False,
-                                    help='generate emulator profile for detected shellcode')
-    misc_options.add_argument(
-                                    '-V',
-                                    dest='verbose',
-                                    default=False,
-                                    action='store_true',
-                                    required=False,
-                                    help='verbose output')
     misc_options.add_argument(
                                     '-L',
                                     dest='linemode',
