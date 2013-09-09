@@ -1,11 +1,15 @@
-[ ] killtcp, is it working?
-[ ] tcp session tracking starts from handshake, is it right?
-[ ] udp session tracking needs testing
-[x] tcp -T should operate on flows and not packets
-[ ] shellcode inspection needs CTS OR STC not BOTH
-[ ] merge show{tcp, udp}matches
-[ ] code cleanup { delete object when done using, remove duplicate/unnecessary objects, ... }
-[ ] make memberids optional
-[ ] regex flags - re.[ILMSUXi]
-[ ] offset corrupts the packet span calculation; span offsets don't include custom offset (2 instead of 1002)
+[ ] flowinspect - A framework for network traffic inspection
+	[ ] killtcp
+	[ ] tcp session tracking starts from handshake
+	[ ] udp session tracking needs testing
+	[x] tcp -T should operate on flows and not packets
+	[ ] shellcode inspection needs CTS OR STC not BOTH
+	[ ] merge show{tcp, udp}matches
+	[ ] code cleanup { delete object when done using, remove duplicate/unnecessary objects, ... }
+	[x] make dfa memberids optional
+	[ ] offset corrupts the packet span calculation
+	[ ] span offsets don't include custom offset (2 instead of 1002)
+	[ ] CORE DUMP: ./flowinspect.py -p ../sigframework/PCAP-Generation-Tools/output/test.bin/HTTP_GET_raw_raw.pcap -C '.*ead2.googlesyndi.*' -C '.*test' -b32 -V -E
+	[ ] LOOP: ./flowinspect.py -p osx_bind_udp.pcap -E -V
+	[ ] rework on partial/final match display
 

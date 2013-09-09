@@ -16,7 +16,6 @@ except ImportError, ex:
     print
     sys.exit(1)
 
-
 try:
     import re2 as re
     regexengine = 're2'
@@ -699,7 +698,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                                                                 'truthvalue': 'True'
                                                             }
                                                     })
-    
+
                     if direction == 'STC':
                         opentcpflows[addrkey]['stcmatcheddfastats'].update({
                                                         dfaobject: {
@@ -720,7 +719,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                                                                                                 'truthvalue': 'True'
                                                                                             }
                                                                             })
-    
+
                     if direction == 'STC':
                         openudpflows[addrkey]['stcmatcheddfastats'].update({
                                                                                 dfaobject: {
@@ -1015,7 +1014,7 @@ def graphdfatransitions(graphtitle, filename, dfaobject):
         stdstdout = sys.stdout
         sys.stdout = NullDevice()
         automata.save_graph(graphfilename)
-        sys.stdout = sys.__stdout__ 
+        sys.stdout = sys.__stdout__
 
         if configopts['graphdir'] != '.':
             if not os.path.exists(configopts['graphdir']):
@@ -1671,12 +1670,12 @@ def main():
     global configopts, regexengine, shellcodeengine, dfaengine
 
     banner = '''\
-        ______              _                            __ 
+        ______              _                            __
        / __/ /___ _      __(_)___  _________  ___  _____/ /_
       / /_/ / __ \ | /| / / / __ \/ ___/ __ \/ _ \/ ___/ __/
-     / __/ / /_/ / |/ |/ / / / / (__  ) /_/ /  __/ /__/ /_  
-    /_/ /_/\____/|__/|__/_/_/ /_/____/ .___/\___/\___/\__/  
-                                    /_/                     
+     / __/ / /_/ / |/ |/ / / / / (__  ) /_/ /  __/ /__/ /_
+    /_/ /_/\____/|__/|__/_/_/ /_/____/ .___/\___/\___/\__/
+                                    /_/
     '''
     print '%s' % (banner)
 
@@ -2200,7 +2199,7 @@ def main():
 
     if args.bpf:
         configopts['bpf'] = args.bpf
-        nids.param('pcap_filter', configopts['bpf'])                
+        nids.param('pcap_filter', configopts['bpf'])
 
     if args.killtcp:
         if configopts['livemode']: configopts['killtcp'] = True
@@ -2225,7 +2224,7 @@ def main():
         nids.chksum_ctl([('0.0.0.0/0', False)])
         nids.param('scan_num_hosts', 0)
 
-        nids.init()                         
+        nids.init()
         nids.register_ip(handleip)
         nids.register_udp(handleudp)
         nids.register_tcp(handletcp)
@@ -2252,7 +2251,7 @@ def main():
 #       print
 #       sys.exit(1)
 
-    exitwithstats()                             
+    exitwithstats()
 
 if __name__ == '__main__':
     main()

@@ -1,30 +1,44 @@
-[x] tcp.kill
-[x] invert match
-[x] prefer re2 over re
-[x] ignore 0 byte matches
-[x] disable inspection - linemode
-[x] support for multiple patterns
-[x] write/append matched packets/streams to a file
-[x] add snort-like content modifiers (offset-depth)
-[x] support for different cts, stc and any patterns
-[x] out modes: quite, meta, hex, ascii, raw (+write)
-[x] stats (longest/shortest match and packet/stream #)
-[x] stop tracking a stream when a match is found (tcp.collect = 0)
-[ ] pcap write (with mods to header fields, regex replace, ...)
-[x] inspection modes:
-	[x] regex
-	[x] fuzzy
-	[x] dfa
-	[x] libemu
-	[x] yara (peid/clamav)
-[x] udp stream tracking (cts/stc/any)
-[x] show matching tcp packet ids (handy when pattern spans many packets)
-[ ] ip/tcp/udp header checks
-[ ] CFG for shellcode
-[ ] state transition graph for regex
-[ ] boolean expressions parser for regex
-[x] boolean expressions parser for dfa
-[ ] dfa + regex together (m01 with r01, m02 with r02, ...)
-[x] shellcode inspection should enable disassembled output (should auto include a new shellcode outmode -> -y)
-[ ] sequence diagram for matched streams (nodes, data flow, packet ids, streamids, data size, ...)
+[ ] flowinspect - A framework for network traffic inspection
+	[x] network/pcap based flow extraction (pynids)
+	[x] tcp.kill
+	[x] invert match
+	[x] prefer re2 over re
+	[x] ignore 0 byte matches
+	[x] disable inspection - linemode
+	[x] support for multiple patterns
+	[x] write/append matched packets/streams to a file
+	[x] add snort-like content modifiers (offset-depth)
+	[x] support for different cts, stc and any patterns
+	[x] out modes: quite, meta, hex, ascii, raw (+write)
+	[x] stats (longest/shortest match and packet/stream #)
+	[x] stop tracking a stream when a match is found (tcp.collect = 0)
+	[ ] inspection modes:
+		[ ] regex
+			[x] re/re2
+			[ ] regex state machine graph
+			[ ] boolean expression parser
+		[x] dfa
+			[x] pydfa
+			[x] dfa state machine graph
+			[x] boolean expression parser
+		[x] pylibemu
+			[x] libemu profile output
+			[ ] shellcode cfg
+			[ ] disassembled opcodes
+		[x] pyyara (peid/clamav)
+		[x] fuzzy match (fuzzywuzzy)
+	[ ] pcap write (with mods to header fields, regex replace, ...)
+		[ ] change MAC/IP/PORT
+		[ ] split pcaps into streams
+		[ ] autocalculate checksums
+		[ ] arbitrary MTU (can correct a jumbo frame pcap)
+		[ ] read headers from cli or config file of key:value pairs
+		[ ] read headers in c array, ... format
+	[x] udp stream tracking (cts/stc/any)
+	[x] show matching tcp packet ids (handy when pattern spans many packets)
+	[ ] ip/tcp/udp header checks
+	[ ] dfa + regex together (m01 with r01, m02 with r02, ...)
+	[ ] sequence diagram for matched streams (nodes, data flow, packet ids, streamids, data size, ...)
+	[ ] cli to switch from TCP flow -> per-packet inspection
+	[ ] wireshark-like colored highlighting for CTS/STC matches
 
