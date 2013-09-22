@@ -54,6 +54,13 @@ except ImportError, ex:
 
 
 sys.dont_write_bytecode = True
+
+# adding custom modules path to system search paths list 
+# for Python to be able to import flowinspect's core modules
+# inspired ffrom Chopshop: https://github.com/MITRECND/chopshop/blob/master/chopshop
+# and this SO answer: http://stackoverflow.com/questions/4383571/importing-files-from-different-folder-in-python
+FLOWINSPECTROOTDIR = os.path.realpath(os.path.dirname(sys.argv[0]))
+sys.path.insert(0, '%s/%s' % (FLOWINSPECTROOTDIR, 'core'))
 from utils import *
 
 
@@ -78,6 +85,11 @@ configopts = {
 
             'ctsyararules': {},
             'stcyararules': {},
+
+            'ctsdirectionstring': 'CTS',
+            'ctsdirectionflag': '->',
+            'stcdirectionstring': 'STC',
+            'stcdirectionflag': '<-',
 
             'dfaexpression': None,
             'dfaexprmembers': [],
@@ -187,16 +199,16 @@ def handleudp(addr, payload, pkt):
 
     if isudpcts(addr):
         if inspectcts or 'shellcode' in configopts['inspectionmodes'] or configopts['linemode']:
-            direction = 'CTS'
-            directionflag = '>'
+            direction = configopts['ctsdirectionstring']
+            directionflag = configopts['ctsdirectionflag']
             key = '%s:%s' % (src, sport)
             keydst = '%s:%s' % (dst, dport)
         else: return
 
     else:
         if inspectstc or 'shellcode' in configopts['inspectionmodes'] or configopts['linemode']:
-            direction = 'STC'
-            directionflag = '<'
+            direction = configopts['stcdirectionstring']
+            directionflag = configopts['stcdirectionflag']
             key = '%s:%s' % (dst, dport)
             keydst = '%s:%s' % (src, sport)
         else: return
@@ -222,7 +234,7 @@ def handleudp(addr, payload, pkt):
     yararuleobjects = []
     timestamp = datetime.datetime.fromtimestamp(nids.get_pkt_ts()).strftime('%H:%M:%S | %Y/%m/%d')
 
-    if direction == 'CTS':
+    if direction == configopts['ctsdirectionstring']:
         openudpflows[key]['ctsdatasize'] += count
         if regexengine and 'regex' in configopts['inspectionmodes']:
             for regex in configopts['ctsregexes']:
@@ -236,7 +248,7 @@ def handleudp(addr, payload, pkt):
             for yararuleobj in configopts['ctsyararules']:
                 yararuleobjects.append(yararuleobj)
 
-    elif direction == 'STC':
+    elif direction == configopts['stcdirectionstring']:
         openudpflows[key]['stcdatasize'] += count
         if regexengine and 'regex' in configopts['inspectionmodes']:
             for regex in configopts['stcregexes']:
@@ -438,12 +450,13 @@ def showudpmatches(data):
         if 'dfa' in configopts['inspectionmodes'] and 'regex' not in configopts['inspectionmodes']:
             if configopts['dfapartialmatch']: matchstatus = '(partial: \'%s\')' % (configopts['dfapartialmatchmember'])
             else: matchstatus = '(final: \'%s\')' % (configopts['dfaexpression'])
-            print '[MATCH] (%08d/%08d) [UDP#%08d] %s:%s - %s:%s %s' % (
+            print '[MATCH] (%08d/%08d) [UDP#%08d] %s:%s %s %s:%s %s' % (
                     configopts['inspudppacketct'],
                     configopts['udpmatches'],
                     configopts['packetct'],
                     src,
                     sport,
+                    directionflag,
                     dst,
                     dport,
                     matchstatus)
@@ -568,7 +581,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 else:
                     matched = False
                     matchstr = 'doesnot match'
-                    matchreason = '<'
+                    matchreason = configopts['stcdirectionflag']
 
             if configopts['verbose']:
                 print '[DEBUG] inspect - [%s#%08d] %s:%s - %s:%s %s \'%s\' (ratio: %d %s threshold: %d)' % (
@@ -594,11 +607,11 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
     dfas = {}
     if 'dfa' in configopts['inspectionmodes']:
-        if direction == 'CTS': dfas = configopts['ctsdfas']
-        if direction == 'STC': dfas = configopts['stcdfas']
+        if direction == configopts['ctsdirectionstring']: dfas = configopts['ctsdfas']
+        if direction == configopts['stcdirectionstring']: dfas = configopts['stcdfas']
 
         for dfaobject in dfas.keys():
-            if direction == 'CTS':
+            if direction == configopts['ctsdirectionstring']:
                 memberid = configopts['ctsdfas'][dfaobject]['memberid']
                 dfapattern = configopts['ctsdfas'][dfaobject]['dfapattern']
                 dfas = configopts['ctsdfas']
@@ -612,7 +625,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                         #skip = True
                         memberid = openudpflows[addrkey]['ctsmatcheddfastats'][dfaobject]['memberid']
 
-            if direction == 'STC':
+            if direction == configopts['stcdirectionstring']:
                 memberid = configopts['stcdfas'][dfaobject]['memberid']
                 dfapattern = configopts['stcdfas'][dfaobject]['dfapattern']
                 dfas = configopts['stcdfas']
@@ -660,7 +673,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
 
                 if proto == 'TCP':
-                    if direction == 'CTS':
+                    if direction == configopts['ctsdirectionstring']:
                         opentcpflows[addrkey]['ctsmatcheddfastats'].update({
                                                         dfaobject: {
                                                                 'dfaobject': dfaobject,
@@ -670,7 +683,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                                                             }
                                                     })
 
-                    if direction == 'STC':
+                    if direction == configopts['stcdirectionstring']:
                         opentcpflows[addrkey]['stcmatcheddfastats'].update({
                                                         dfaobject: {
                                                                 'dfaobject': dfaobject,
@@ -681,7 +694,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                                                     })
 
                 elif proto == 'UDP':
-                    if direction == 'CTS':
+                    if direction == configopts['ctsdirectionstring']:
                         openudpflows[addrkey]['ctsmatcheddfastats'].update({
                                                                                 dfaobject: {
                                                                                                 'dfaobject': dfaobject,
@@ -691,7 +704,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                                                                                             }
                                                                             })
 
-                    if direction == 'STC':
+                    if direction == configopts['stcdirectionstring']:
                         openudpflows[addrkey]['stcmatcheddfastats'].update({
                                                                                 dfaobject: {
                                                                                                 'dfaobject': dfaobject,
@@ -817,18 +830,18 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                                 }
 
                     if proto == 'TCP':
-                        if direction == 'CTS':
-                            dfapartialmatches[memberid]['directionflag'] = '>'
+                        if direction == configopts['ctsdirectionstring']:
+                            dfapartialmatches[memberid]['directionflag'] = configopts['ctsdirectionflag']
                             opentcpflows[addrkey]['ctspacketlendict'].update({ opentcpflows[addrkey]['insppackets']: datalen })
-                        elif direction == 'STC':
-                            dfapartialmatches[memberid]['directionflag'] = '<'
+                        elif direction == configopts['stcdirectionstring']:
+                            dfapartialmatches[memberid]['directionflag'] = configopts['stcdirectionflag']
                             opentcpflows[addrkey]['stcpacketlendict'].update({ opentcpflows[addrkey]['insppackets']: datalen })
                         showtcpmatches(data)
                     if proto == 'UDP':
-                        if direction == 'CTS':
-                            dfapartialmatches[memberid]['directionflag'] = '>'
-                        elif direction == 'STC':
-                            dfapartialmatches[memberid]['directionflag'] = '<'
+                        if direction == configopts['ctsdirectionstring']:
+                            dfapartialmatches[memberid]['directionflag'] = configopts['ctsdirectionflag']
+                        elif direction == configopts['stcdirectionstring']:
+                            dfapartialmatches[memberid]['directionflag'] = configopts['stcdirectionflag']
                         showudpmatches(data)
 
                     if configopts['graph']:
@@ -1048,8 +1061,10 @@ def handletcp(tcp):
                         len(opentcpflows))
 
         if configopts['linemode'] or 'shellcode' in configopts['inspectionmodes']:
-            tcp.server.collect = 1
-            tcp.client.collect = 1
+            tcp.server.collect += 1
+            tcp.server.collect_urg += 1
+            tcp.client.collect += 1
+            tcp.client.collect_urg += 1
             if configopts['verbose']:
                 print '[DEBUG] handletcp - [TCP#%08d] Enabled both CTS and STC data collection for %s:%s - %s:%s' % (
                         opentcpflows[addrkey]['id'],
@@ -1059,7 +1074,8 @@ def handletcp(tcp):
                         dport)
         else:
             if inspectcts or 'shellcode' in configopts['inspectionmodes']:
-                tcp.server.collect = 1
+                tcp.server.collect += 1
+                tcp.server.collect_urg += 1
                 if configopts['verbose']:
                     print '[DEBUG] handletcp - [TCP#%08d] Enabled CTS data collection for %s:%s - %s:%s' % (
                         opentcpflows[addrkey]['id'],
@@ -1068,7 +1084,8 @@ def handletcp(tcp):
                         dst,
                         dport)
             if inspectstc or 'shellcode' in configopts['inspectionmodes']:
-                tcp.client.collect = 1
+                tcp.client.collect += 1
+                tcp.client.collect_urg += 1
                 if configopts['verbose']:
                     print '[DEBUG] handletcp - [TCP#%08d] Enabled STC data collection for %s:%s - %s:%s' % (
                         opentcpflows[addrkey]['id'],
@@ -1083,8 +1100,8 @@ def handletcp(tcp):
         configopts['insptcppacketct'] += 1
 
         if tcp.server.count_new > 0:
-            direction = 'CTS'
-            directionflag = '>'
+            direction = configopts['ctsdirectionstring']
+            directionflag = configopts['ctsdirectionflag']
             count = tcp.server.count
             newcount = tcp.server.count_new
             start = tcp.server.count - tcp.server.count_new
@@ -1092,6 +1109,17 @@ def handletcp(tcp):
             data = tcp.server.data[:tcp.server.count]
             opentcpflows[addrkey]['totdatasize'] += tcp.server.count_new
 
+        if tcp.server.count_new_urg > 0:
+            direction = configopts['ctsdirectionstring']
+            directionflag = configopts['ctsdirectionflag']
+            count = tcp.server.count_new_urg
+            newcount = tcp.server.count_new_urg
+            start = tcp.server.count - tcp.server.count_new_urg
+            end = tcp.server.count_new_urg
+            data = tcp.server.urgdata[:tcp.server.count_new_urg]
+            opentcpflows[addrkey]['totdatasize'] += tcp.server.count_new_urg
+
+        if tcp.server.count_new > 0 or tcp.server.count_new_urg > 0:
             if regexengine and 'regex' in configopts['inspectionmodes']:
                 for regex in configopts['ctsregexes']:
                     regexes.append(regex)
@@ -1105,8 +1133,8 @@ def handletcp(tcp):
                     yararuleobjects.append(yararuleobj)
 
         if tcp.client.count_new > 0:
-            direction = 'STC'
-            directionflag = '<'
+            direction = configopts['stcdirectionstring']
+            directionflag = configopts['stcdirectionflag']
             count = tcp.client.count
             newcount = tcp.client.count_new
             start = tcp.client.count - tcp.client.count_new
@@ -1177,7 +1205,7 @@ def handletcp(tcp):
 
         opentcpflows[addrkey]['insppackets'] += 1
 
-        if direction == 'CTS':
+        if direction == configopts['ctsdirectionstring']:
             opentcpflows[addrkey]['ctspacketlendict'].update({ opentcpflows[addrkey]['insppackets']:inspdatalen })
         else:
             opentcpflows[addrkey]['stcpacketlendict'].update({ opentcpflows[addrkey]['insppackets']:inspdatalen })
@@ -1187,12 +1215,12 @@ def handletcp(tcp):
         if matched:
             if configopts['killtcp']: tcp.kill
 
-            if direction == 'CTS':
-                matchstats['direction'] = 'CTS'
-                matchstats['directionflag'] = '>'
-            elif direction == 'STC':
-                matchstats['direction'] = 'STC'
-                matchstats['directionflag'] = '<'
+            if direction == configopts['ctsdirectionstring']:
+                matchstats['direction'] = configopts['ctsdirectionstring']
+                matchstats['directionflag'] = configopts['ctsdirectionflag']
+            elif direction == configopts['stcdirectionstring']:
+                matchstats['direction'] = configopts['stcdirectionstring']
+                matchstats['directionflag'] = configopts['stcdirectionflag']
 
             if configopts['tcpmatches'] == 0:
                 configopts['shortestmatch']['stream'] = matchstats['matchsize']
@@ -1209,7 +1237,9 @@ def handletcp(tcp):
                     configopts['longestmatch']['streamid'] = opentcpflows[addrkey]['id']
 
             tcp.server.collect = 0
+            tcp.server.collect_urg = 0
             tcp.client.collect = 0
+            tcp.client.collect_urg = 0
             configopts['tcpmatches'] += 1
 
             matchstats['addr'] = addrkey
@@ -1310,20 +1340,26 @@ def showtcpmatches(data):
         if configopts['dfapartialmatch']:
             id = opentcpflows[dfapartialmatches[configopts['dfapartialmatchmember']]['addr']]['id']
 
-            if dfapartialmatches[configopts['dfapartialmatchmember']]['direction'] == 'CTS': packetlendict = opentcpflows[dfapartialmatches[configopts['dfapartialmatchmember']]['addr']]['ctspacketlendict']
-            else: packetlendict = opentcpflows[dfapartialmatches[configopts['dfapartialmatchmember']]['addr']]['stcpacketlendict']
+            if dfapartialmatches[configopts['dfapartialmatchmember']]['direction'] == configopts['ctsdirectionstring']:
+                packetlendict = opentcpflows[dfapartialmatches[configopts['dfapartialmatchmember']]['addr']]['ctspacketlendict']
+            else:
+                packetlendict = opentcpflows[dfapartialmatches[configopts['dfapartialmatchmember']]['addr']]['stcpacketlendict']
 
             direction = dfapartialmatches[configopts['dfapartialmatchmember']]['direction']
+            directionflag = dfapartialmatches[configopts['dfapartialmatchmember']]['directionflag']
             start = dfapartialmatches[configopts['dfapartialmatchmember']]['start']
             end = dfapartialmatches[configopts['dfapartialmatchmember']]['end']
             matchsize = dfapartialmatches[configopts['dfapartialmatchmember']]['matchsize']
         else:
             id = opentcpflows[matchstats['addr']]['id']
 
-            if matchstats['direction'] == 'CTS': packetlendict = opentcpflows[matchstats['addr']]['ctspacketlendict']
-            else: packetlendict = opentcpflows[matchstats['addr']]['stcpacketlendict']
+            if matchstats['direction'] == configopts['ctsdirectionstring']:
+                packetlendict = opentcpflows[matchstats['addr']]['ctspacketlendict']
+            else:
+                packetlendict = opentcpflows[matchstats['addr']]['stcpacketlendict']
 
             direction = matchstats['direction']
+            directionflag = matchstats['directionflag']
             start = matchstats['start']
             end = matchstats['end']
             matchsize = matchstats['matchsize']
@@ -1339,10 +1375,14 @@ def showtcpmatches(data):
 
         elif matchstats['detectiontype'] == 'dfa':
             if configopts['dfapartialmatch']:
-                metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (dfapartialmatches[configopts['dfapartialmatchmember']]['dfapattern'], dfapartialmatches[configopts['dfapartialmatchmember']]['dfastatecount'])
+                metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (
+                    dfapartialmatches[configopts['dfapartialmatchmember']]['dfapattern'],
+                    dfapartialmatches[configopts['dfapartialmatchmember']]['dfastatecount'])
                 packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
             else:
-                metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (matchstats['dfapattern'], matchstats['dfastatecount'])
+                metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (
+                    matchstats['dfapattern'],
+                    matchstats['dfastatecount'])
                 packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
 
         elif matchstats['detectiontype'] == 'shellcode':
@@ -1360,22 +1400,24 @@ def showtcpmatches(data):
         if 'dfa' in configopts['inspectionmodes'] and 'regex' not in configopts['inspectionmodes']:
             if configopts['dfapartialmatch']: matchstatus = '(partial: \'%s\')' % (configopts['dfapartialmatchmember'])
             else: matchstatus = '(final: \'%s\')' % (configopts['dfaexpression'])
-            print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s - %s:%s %s' % (
+            print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s %s' % (
                     configopts['insptcppacketct'],
                     configopts['tcpmatches'],
                     id,
                     src,
                     sport,
+                    directionflag,
                     dst,
                     dport,
                     matchstatus)
 
-        print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s - %s:%s %s' % (
+        print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s %s' % (
                 configopts['insptcppacketct'],
                 configopts['tcpmatches'],
                 id,
                 src,
                 sport,
+                directionflag,
                 dst,
                 dport,
                 metastr)
