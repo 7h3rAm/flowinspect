@@ -1,13 +1,31 @@
-#!/usr/bin/env python2
+# flowinspect misc. utilities
 
-import re, pickle
+from globals import configopts
+
+if configopts['regexengine'] == 're2':
+    import re2
+else:
+    import re
+
+import pickle, collections, json
+
+
+# when stdout has to be mute'd
+class NullDevice():
+    def write(self, s): pass
+
+
+# sort and print a dict
+def printdict(dictdata):
+    sd = collections.OrderedDict(sorted(dictdata.items()))
+    print(json.dumps(sd, indent=4))
 
 # get regex pattern from compiled object
 def getregexpattern(regexobj):
     dumps = pickle.dumps(regexobj)
     regexpattern = re.search("\n\(S'(.*)'\n", dumps).group(1)
     if re.findall(r'\\x[0-9a-f]{2}', regexpattern):
-        regexpattern = re.sub(r'(\\x)([0-9a-f]{2})', r'x\2', regexpattern)
+        regexpattern = re2.sub(r'(\\x)([0-9a-f]{2})', r'x\2', regexpattern)
 
     return regexpattern
 
