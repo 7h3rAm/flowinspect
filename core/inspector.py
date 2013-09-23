@@ -413,7 +413,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                         dfapattern)
 
     if 'shellcode' in configopts['inspectionmodes']:
-        emulator = emu.Emulator(1024)
+        emulator = emu.Emulator(configopts['emuprofileoutsize'])
         offset = emulator.shellcode_getpc_test(data)
         if offset < 0: offset = 0
         emulator.prepare(data, offset)
@@ -431,6 +431,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                         id,
                         src,
                         sport,
+                        directionflag,
                         dst,
                         dport)
 
@@ -445,11 +446,15 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                             direction)
 
                 data = emulator.emu_profile_output.decode('utf8')
-                fo = open(filename, 'w')
-                fo.write(data)
-                fo.close()
-                if configopts['verbose']:
-                    print '[DEBUG] inspect - [%s#%08d] Wrote %d byte emulator profile output to %s' % (proto, id, len(data), filename)
+
+                if emulator.emu_profile_truncated and configopts['verbose']:
+                    print '[DEBUG] inspect - [%s#%08d] Skipping emulator profile output generation as its truncated' % (proto, id)
+                else:
+                    fo = open(filename, 'w')
+                    fo.write(data)
+                    fo.close()
+                    if configopts['verbose']:
+                        print '[DEBUG] inspect - [%s#%08d] Wrote %d byte emulator profile output to %s' % (proto, id, len(data), filename)
 
             return True
 

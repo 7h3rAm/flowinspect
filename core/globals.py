@@ -32,10 +32,13 @@ configopts = {
 
     'bpf': None,
 
+    'colored': False,
     'ctsdfas': {},
     'ctsdirectionflag': '>',
     'ctsdirectionstring': 'CTS',
     'ctsfuzzpatterns': [],
+    'ctsoutcolor': 'red',
+    'ctsoutcolorattrs': ['bold'],
     'ctsregexes': {},
     'ctsyararules': {},
 
@@ -51,6 +54,7 @@ configopts = {
     'dispstreamct': 0,
 
     'emuprofile': False,
+    'emuprofileoutsize': 1024,
 
     'fuzzengine': None,
     'fuzzminthreshold': 75,
@@ -95,6 +99,8 @@ configopts = {
     'stcdirectionflag': '<',
     'stcdirectionstring': 'STC',
     'stcfuzzpatterns': [],
+    'stcoutcolor': 'blue',
+    'stcoutcolorattrs': ['bold'],
     'stcregexes': {},
     'stcyararules': {},
     'streamct': 0,

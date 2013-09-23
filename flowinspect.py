@@ -194,7 +194,7 @@ def dumpargsstats(configopts):
         if mode == 'regex': print '\'regex (%s)\'' % (configopts['regexengine']),
         if mode == 'fuzzy': print '\'fuzzy (%s)\'' % (configopts['fuzzengine']),
         if mode == 'dfa': print '\'dfa (%s)\'' % (configopts['dfaengine']),
-        if mode == 'shellcode': print '\'shellcode (%s)\'' % (configopts['shellcodeengine']),
+        if mode == 'shellcode': print '\'shellcode (%s)\' | memory: %dK' % (configopts['shellcodeengine'], configopts['emuprofileoutsize']),
     print ']'
 
     if 'regex' in configopts['inspectionmodes']:
@@ -491,6 +491,14 @@ def main():
                                     action='store_true',
                                     required=False,
                                     help='generate emulator profile for detected shellcode')
+    shellcode_options.add_argument(
+                                    '-Y',
+                                    metavar='--emuprofileoutsize',
+                                    dest='emuprofileoutsize',
+                                    default=0,
+                                    action='store',
+                                    required=False,
+                                    help='emulator profile memory size (default 1024K | max: 10240K)')
 
     content_modifiers = parser.add_argument_group('Content Modifiers')
     content_modifiers.add_argument(
@@ -602,6 +610,13 @@ def main():
                                     required=False,
                                     help='verbose output')
     misc_options.add_argument(
+                                    '-e',
+                                    dest='colored',
+                                    default=False,
+                                    action='store_true',
+                                    required=False,
+                                    help='enable colored output')
+    misc_options.add_argument(
                                     '-k',
                                     dest='killtcp',
                                     default=False,
@@ -625,7 +640,7 @@ def main():
 
     args = parser.parse_args()
 
-#    sys.stdout = NullDevice()
+    #sys.stdout = NullDevice()
 
     if args.pcap:
         configopts['pcap'] = args.pcap
@@ -829,12 +844,18 @@ def main():
     if args.emuprofile:
         configopts['emuprofile'] = True
 
+    if int(args.emuprofileoutsize) > 0 and int(args.emuprofileoutsize) <= 10240:
+        configopts['emuprofileoutsize'] = int(args.emuprofileoutsize)
+
     if args.bpf:
         configopts['bpf'] = args.bpf
         nids.param('pcap_filter', configopts['bpf'])
 
     if args.killtcp:
         if configopts['livemode']: configopts['killtcp'] = True
+
+    if args.colored:
+        configopts['colored'] = True
 
     if args.verbose:
         configopts['verbose'] = True

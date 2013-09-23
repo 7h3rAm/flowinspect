@@ -316,9 +316,25 @@ def showudpmatches(data):
                 end,
                 matchsize)
 
-    if 'print' in configopts['outmodes']: printable(data[:maxdispbytes])
-    if 'raw' in configopts['outmodes']: print data[:maxdispbytes]
-    if 'hex' in configopts['outmodes']: hexdump(data[:maxdispbytes])
+    if 'print' in configopts['outmodes']:
+        if configopts['colored']:
+            if direction == configopts['ctsdirectionstring']:
+                printable(data[:maxdispbytes], configopts['ctsoutcolor'])
+            elif direction == configopts['stcdirectionstring']:
+                printable(data[:maxdispbytes], configopts['stcoutcolor'])
+        else:
+            printable(data[:maxdispbytes], None)
 
-    configopts['disppacketct'] += 1
+    if 'raw' in configopts['outmodes']:
+        print data[:maxdispbytes]
 
+    if 'hex' in configopts['outmodes']:
+        if configopts['colored']:
+            if direction == configopts['ctsdirectionstring']:
+                hexdump(data[:maxdispbytes], configopts['ctsoutcolor'])
+            elif direction == configopts['stcdirectionstring']:
+                hexdump(data[:maxdispbytes], configopts['stcoutcolor'])
+        else:
+            hexdump(data[:maxdispbytes], None)
+
+    configopts['dispstreamct'] += 1

@@ -8,6 +8,7 @@ else:
     import re
 
 import pickle, collections, json
+from termcolor import colored
 
 
 # when stdout has to be mute'd
@@ -30,7 +31,7 @@ def getregexpattern(regexobj):
     return regexpattern
 
 # raw bytes to hexdump filter
-def hexdump(data, length=16, sep='.'):
+def hexdump(data, color, length=16, sep='.'):
     lines = []
     FILTER = ''.join([(len(repr(chr(x))) == 3) and chr(x) or sep for x in range(256)])
     for c in xrange(0, len(data), length):
@@ -38,15 +39,36 @@ def hexdump(data, length=16, sep='.'):
         hex = ' '.join(["%02x" % ord(x) for x in chars])
         printablechars = ''.join(["%s" % ((ord(x) <= 127 and FILTER[ord(x)]) or sep) for x in chars])
         lines.append("%08x:  %-*s  |%s|\n" % (c, length*3, hex, printablechars))
-    print ''.join(lines)
+
+    if color:
+        if color == configopts['ctsoutcolor']:
+            print colored(''.join(lines), configopts['ctsoutcolor'], attrs=configopts['ctsoutcolorattrs'])
+        elif color == configopts['stcoutcolor']:
+            print colored(''.join(lines), configopts['stcoutcolor'], attrs=configopts['stcoutcolorattrs'])
+    else:
+        print ''.join(lines)
 
 
 # ascii printable filter for raw bytes
-def printable(data):
-    print ''.join([ch for ch in data if ord(ch) > 31 and ord(ch) < 126
-                    or ord(ch) == 9
-                    or ord(ch) == 10
-                    or ord(ch) == 13
-                    or ord(ch) == 32])
+def printable(data, color):
+    if color:
+        if color == configopts['ctsoutcolor']:
+            print colored(''.join([ch for ch in data if ord(ch) > 31 and ord(ch) < 126
+                                   or ord(ch) == 9
+                                   or ord(ch) == 10
+                                   or ord(ch) == 13
+                                   or ord(ch) == 32]), configopts['ctsoutcolor'], attrs=configopts['ctsoutcolorattrs'])
+        elif color == configopts['stcoutcolor']:
+            print colored(''.join([ch for ch in data if ord(ch) > 31 and ord(ch) < 126
+                                   or ord(ch) == 9
+                                   or ord(ch) == 10
+                                   or ord(ch) == 13
+                                   or ord(ch) == 32]), configopts['stcoutcolor'], attrs=configopts['stcoutcolorattrs'])
+    else:
+        print ''.join([ch for ch in data if ord(ch) > 31 and ord(ch) < 126
+                        or ord(ch) == 9
+                        or ord(ch) == 10
+                        or ord(ch) == 13
+                        or ord(ch) == 32])
 
 
