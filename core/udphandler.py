@@ -194,7 +194,7 @@ def handleudp(addr, payload, pkt):
 
         matchstats['addr'] = addrkey
         showudpmatches(data[matchstats['start']:matchstats['end']])
-        #del openudpflows[key]
+        del openudpflows[key]
 
 
 def showudpmatches(data):

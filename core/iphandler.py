@@ -50,13 +50,22 @@ def handleip(pkt):
 
         data = pkt[ipihl+tcphl:]
 
+        tcpflagsstr = []
+        if tcpflags & 1 == 1: tcpflagsstr.append('F')
+        if tcpflags & 2 == 2: tcpflagsstr.append('S')
+        if tcpflags & 4 == 4: tcpflagsstr.append('R')
+        if tcpflags & 8 == 8: tcpflagsstr.append('P')
+        if tcpflags & 16 == 16: tcpflagsstr.append('A')
+        if tcpflags & 32 == 32: tcpflagsstr.append('U')
+        tcpflagsstr = "".join(tcpflagsstr)
+
         if configopts['verbose']:
-            print '[DEBUG] handleip - %s:%s > %s:%s TCP [ flags: %d | seq: %d | ack: %d | win: %d | len: %dB ]' % (
+            print '[DEBUG] handleip - %s:%s > %s:%s TCP [ flags: %s | seq: %d | ack: %d | win: %d | len: %dB ]' % (
                     ipsrc,
                     tcpsport,
                     ipdst,
                     tcpdport,
-                    tcpflags,
+                    tcpflagsstr,
                     tcpseq,
                     tcpack,
                     tcpwindow,

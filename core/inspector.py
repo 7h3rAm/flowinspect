@@ -4,7 +4,7 @@
 # yara: import python-yara, match over rcvd data, populate match stats
 # shellcode: import libemu, match over rcvd data, populate match stats
 
-import nids
+import sys, nids
 from globals import configopts, opentcpflows, openudpflows, matchstats, dfapartialmatches
 from utils import printdict, hexdump
 
@@ -524,6 +524,7 @@ def graphdfatransitions(graphtitle, filename, dfaobject):
 
         extension = 'png'
         graphfilename = '%s.%s' % (filename, extension)
+        from pydfa.graph import FA
         automata = FA(dfaobject)
         automata.draw_graph(graphtitle, 1, 0)
         stdstdout = sys.stdout

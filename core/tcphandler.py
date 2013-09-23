@@ -260,7 +260,7 @@ def handletcp(tcp):
 
             if not configopts['tcpmultimatch']:
                 if configopts['verbose']:
-                    print '[DEBUG] handletcp - [TCP-%08d] %s:%s - %s:%s not being tracked any further (tcpmultimatch: %s)' % (
+                    print '[DEBUG] handletcp - [TCP#%08d] %s:%s - %s:%s not being tracked any further (tcpmultimatch: %s)' % (
                             opentcpflows[addrkey]['id'],
                             src,
                             sport,
@@ -279,7 +279,7 @@ def handletcp(tcp):
                 configopts['multimatchskipoffset'] += matchstats['end']
 
                 if configopts['verbose']:
-                    print '[DEBUG] handletcp - [TCP-%08d] Marked %dB to be skipped for further %s inspection' % (
+                    print '[DEBUG] handletcp - [TCP#%08d] Marked %dB to be skipped for further %s inspection' % (
                             opentcpflows[addrkey]['id'],
                             configopts['multimatchskipoffset'],
                             direction)
