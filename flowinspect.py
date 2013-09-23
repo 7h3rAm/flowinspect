@@ -168,7 +168,7 @@ def dumpopenstreams():
                 stcdatasize += size
 
             totdatasize = ctsdatasize + stcdatasize
-            print '[DEBUG] [%08d] %s:%s %s %s:%s (CTS: %dB | STC: %dB | TOT: %dB)' % (
+            print '[DEBUG] [%08d] %s:%s - %s:%s (CTS: %dB | STC: %dB | TOT: %dB)' % (
                     id,
                     src,
                     sport,
@@ -615,7 +615,7 @@ def main():
                                     default=False,
                                     action='store_true',
                                     required=False,
-                                    help='enable colored output')
+                                    help='highlight CTS/STC matches')
     misc_options.add_argument(
                                     '-k',
                                     dest='killtcp',
@@ -623,6 +623,13 @@ def main():
                                     action='store_true',
                                     required=False,
                                     help='kill matching TCP stream')
+    misc_options.add_argument(
+                                    '-j',
+                                    dest='tcpmultimatch',
+                                    default=False,
+                                    action='store_true',
+                                    required=False,
+                                    help='enable TCP multi match mode')
     misc_options.add_argument(
                                     '-n',
                                     dest='confirm',
@@ -853,6 +860,9 @@ def main():
 
     if args.killtcp:
         if configopts['livemode']: configopts['killtcp'] = True
+
+    if args.tcpmultimatch:
+        configopts['tcpmultimatch'] = True
 
     if args.colored:
         configopts['colored'] = True

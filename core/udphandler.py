@@ -15,8 +15,6 @@ def isudpcts(addr):
 
 
 def handleudp(addr, payload, pkt):
-    global configopts, openudpflows, regexengine, shellcodeengine, dfaengine
-
     showmatch = False
     addrkey = addr
     ((src, sport), (dst, dport)) = addr
@@ -34,19 +32,20 @@ def handleudp(addr, payload, pkt):
 
     if isudpcts(addr):
         if inspectcts or 'shellcode' in configopts['inspectionmodes'] or configopts['linemode']:
-            direction = 'CTS'
-            directionflag = '>'
+            direction = configopts['ctsdirectionstring']
+            directionflag = configopts['ctsdirectionflag']
             key = '%s:%s' % (src, sport)
             keydst = '%s:%s' % (dst, dport)
-        else: return
-
+        else:
+            return
     else:
         if inspectstc or 'shellcode' in configopts['inspectionmodes'] or configopts['linemode']:
-            direction = 'STC'
-            directionflag = '<'
+            direction = configopts['stcdirectionstring']
+            directionflag = configopts['stcdirectionflag']
             key = '%s:%s' % (dst, dport)
             keydst = '%s:%s' % (src, sport)
-        else: return
+        else:
+            return
 
     if key in openudpflows and openudpflows[key]['keydst'] == keydst:
         openudpflows[key]['totdatasize'] += count
@@ -69,7 +68,7 @@ def handleudp(addr, payload, pkt):
     yararuleobjects = []
     timestamp = datetime.datetime.fromtimestamp(nids.get_pkt_ts()).strftime('%H:%M:%S | %Y/%m/%d')
 
-    if direction == 'CTS':
+    if direction == configopts['ctsdirectionstring']:
         openudpflows[key]['ctsdatasize'] += count
         if 'regex' in configopts['inspectionmodes']:
             for regex in configopts['ctsregexes']:
@@ -83,7 +82,7 @@ def handleudp(addr, payload, pkt):
             for yararuleobj in configopts['ctsyararules']:
                 yararuleobjects.append(yararuleobj)
 
-    elif direction == 'STC':
+    elif direction == configopts['stcdirectionstring']:
         openudpflows[key]['stcdatasize'] += count
         if 'regex' in configopts['inspectionmodes']:
             for regex in configopts['stcregexes']:
@@ -199,8 +198,6 @@ def handleudp(addr, payload, pkt):
 
 
 def showudpmatches(data):
-    global configopts, matchstats
-
     proto = 'UDP'
 
     if configopts['dfapartialmatch']:
@@ -250,9 +247,9 @@ def showudpmatches(data):
                     configopts['maxdisppackets'])
         return
 
+    direction = matchstats['direction']
+    directionflag = matchstats['directionflag']
     if 'meta' in configopts['outmodes']:
-        direction = matchstats['direction']
-        directionflag = matchstats['directionflag']
         start = matchstats['start']
         end = matchstats['end']
         matchsize = matchstats['matchsize']
@@ -338,3 +335,5 @@ def showudpmatches(data):
             hexdump(data[:maxdispbytes], None)
 
     configopts['dispstreamct'] += 1
+
+

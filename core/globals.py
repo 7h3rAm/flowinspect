@@ -64,6 +64,7 @@ configopts = {
 
     'igncase': False,
     'inspectionmodes': [],
+    'inspoffset': 0,
     'insptcppacketct': 0,
     'insptcpstreamct': 0,
     'inspudppacketct': 0,
@@ -82,6 +83,7 @@ configopts = {
     'maxinsppackets': 0,
     'maxinspstreams': 0,
     'multiline': False,
+    'multimatchskipoffset': 0,
     'name': 'flowinspect',
 
     'offset': 0,
@@ -107,6 +109,8 @@ configopts = {
 
     'tcpdone': False,
     'tcpmatches': 0,
+    'tcpmultimatch': False,
+
     'udpdone': False,
     'udpmatches': 0,
     'useoroperator': False,

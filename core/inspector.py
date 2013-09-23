@@ -64,8 +64,8 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
             if matchstats['match']:
                 matchstats['detectiontype'] = 'regex'
                 matchstats['regex'] = regex
-                matchstats['start'] = matchstats['match'].start() + configopts['offset']
-                matchstats['end'] = matchstats['match'].end() + configopts['offset']
+                matchstats['start'] = matchstats['match'].start()
+                matchstats['end'] = matchstats['match'].end()
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
                 if configopts['verbose']:
                     print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s matches regex: \'%s\'' % (
