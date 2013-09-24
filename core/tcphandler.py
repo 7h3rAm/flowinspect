@@ -163,13 +163,13 @@ def handletcp(tcp):
             else:
                 offset = 0
 
-            if configopts['depth'] > 0 and configopts['depth'] <= (count - offset):
-                depth = configopts['depth'] + offset
-            else:
-                depth = count
-
             offset += configopts['multimatchskipoffset']
             configopts['inspoffset'] = offset
+
+            if configopts['depth'] > 0 and configopts['depth'] < (count - offset):
+                depth = offset + configopts['depth']
+            else:
+                depth = count
 
             inspdata = tcp.client.data[offset:depth]
             inspdatalen = len(inspdata)
@@ -284,7 +284,6 @@ def handletcp(tcp):
                             configopts['multimatchskipoffset'],
                             direction)
 
-                configopts['multimatchskipoffset'] += 1
         else:
             opentcpflows[addrkey]['previnspbufsize'] = inspdatalen
 
