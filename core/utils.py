@@ -41,8 +41,8 @@ def pcapwriter(filename, pktlist):
     pcap_incl_len = 0
     pcap_orig_len = 0
 
-    ethernet = ('00 0a 00 0a 00 0a'
-                  '00 0b 00 0b 00 0b'
+    ethernet = ('00 0b 00 0b 00 0b'
+                  '00 0a 00 0a 00 0a'
                   '08 00')
     eth_header = binascii.a2b_hex(''.join(ethernet.split()))
 
