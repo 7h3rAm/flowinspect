@@ -2,9 +2,9 @@
 # tracks sessions, identifies direction, populates data buffers, calls inspect, and calls show tcpmatches
 
 import datetime, nids
-from globals import configopts, opentcpflows, matchstats
+from globals import configopts, opentcpflows, matchstats, ippacketsdict
 from inspector import inspect
-from utils import getregexpattern, hexdump, printable
+from utils import getregexpattern, hexdump, printable, writetofile
 
 
 def handletcp(tcp):
@@ -233,6 +233,31 @@ def handletcp(tcp):
         if matched:
             if configopts['killtcp']: tcp.kill
 
+            if configopts['writepcap']:
+                if addrkey in ippacketsdict.keys() and ippacketsdict[addrkey]['proto'] == 'TCP':
+                    ippacketsdict[addrkey]['matched'] = True
+                    ippacketsdict[addrkey]['id'] = opentcpflows[addrkey]['id']
+                    if configopts['verbose']:
+                        print '[DEBUG] handletcp - [TCP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
+                            opentcpflows[addrkey]['id'],
+                            src,
+                            sport,
+                            dst,
+                            dport)
+                else:
+                    ((sip, sp), (dip, dp)) = addrkey
+                    newaddrkey = ((dip, dp), (sip, sp))
+                    if newaddrkey in ippacketsdict.keys() and ippacketsdict[newaddrkey]['proto'] == 'TCP':
+                        ippacketsdict[newaddrkey]['matched'] = True
+                        ippacketsdict[newaddrkey]['id'] = opentcpflows[addrkey]['id']
+                    else:
+                        print '[DEBUG] handletcp - [TCP#%08d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
+                                opentcpflows[addrkey]['id'],
+                                src,
+                                sport,
+                                dst,
+                                dport)
+
             if direction == configopts['ctsdirectionstring']:
                 matchstats['direction'] = configopts['ctsdirectionstring']
                 matchstats['directionflag'] = configopts['ctsdirectionflag']
@@ -259,6 +284,8 @@ def handletcp(tcp):
             showtcpmatches(inspdata[matchstats['start']:matchstats['end']])
 
             if not configopts['tcpmultimatch']:
+                tcp.server.collect = 0
+                tcp.client.collect = 0
                 if configopts['verbose']:
                     print '[DEBUG] handletcp - [TCP#%08d] %s:%s - %s:%s not being tracked any further (tcpmultimatch: %s)' % (
                             opentcpflows[addrkey]['id'],
@@ -267,8 +294,6 @@ def handletcp(tcp):
                             dst,
                             dport,
                             configopts['tcpmultimatch'])
-                tcp.server.collect = 0
-                tcp.client.collect = 0
                 del opentcpflows[addrkey]
             else:
                 if direction == configopts['ctsdirectionstring']:

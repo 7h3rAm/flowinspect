@@ -2,7 +2,7 @@
 # collects ip payload if pcap write is requested
 
 import datetime, nids
-from globals import configopts, openudpflows, matchstats
+from globals import configopts, openudpflows, matchstats, ippacketsdict
 from inspector import inspect
 from utils import getregexpattern, hexdump, printable
 
@@ -23,6 +23,8 @@ ipprotodict = {
 UDPHDRLEN = 8
 
 def handleip(pkt):
+    ipmetavars = 3
+
     iphdr = unpack('!BBHHHBBH4s4s', pkt[:20])
     ipversion = iphdr[0] >> 4
     ipihl = iphdr[0] & 0xF
@@ -71,6 +73,37 @@ def handleip(pkt):
                     tcpwindow,
                     len(data))
 
+        if configopts['writepcap']:
+            fivetuple = ((ipsrc, tcpsport), (ipdst, tcpdport))
+            revfivetuple = ((ipdst, tcpdport), (ipsrc, tcpsport))
+
+            if fivetuple in ippacketsdict.keys() and ippacketsdict[fivetuple]['proto'] == 'TCP':
+                key = len(ippacketsdict[fivetuple].keys()) - ipmetavars
+                ippacketsdict[fivetuple][key] = pkt
+                if configopts['verbose']:
+                    print '[DEBUG] handleip - Saved IP/TCP packet to global per-flow dict (Key: %s | Packets: %d)' % (
+                            fivetuple,
+                            len(ippacketsdict[fivetuple]) - ipmetavars)
+
+            elif revfivetuple in ippacketsdict.keys() and ippacketsdict[revfivetuple]['proto'] == 'TCP':
+                key = len(ippacketsdict[revfivetuple].keys()) - ipmetavars
+                ippacketsdict[revfivetuple][key] = pkt
+                if configopts['verbose']:
+                    print '[DEBUG] handleip - Saved IP/TCP packet to global per-flow dict (Key: %s | Packets: %d)' % (
+                            revfivetuple,
+                            len(ippacketsdict[revfivetuple]) - ipmetavars)
+
+            else:
+                ippacketsdict[fivetuple] = {    'proto': 'TCP',
+                                                'id': 0,
+                                                'matched':False,
+                                                0: pkt
+                                            }
+                if configopts['verbose']:
+                    print '[DEBUG] handleip - Saved IP/TCP packet to global per-flow dict (Key: %s | Packets: %d)' % (
+                            fivetuple,
+                            len(ippacketsdict[fivetuple]) - ipmetavars)
+
     elif ipproto == ipprotodict['udp']:
         udphdr = unpack('!HHHH', pkt[ipihl:ipihl+UDPHDRLEN])
         udpsport = udphdr[0]
@@ -86,5 +119,37 @@ def handleip(pkt):
                     ipdst,
                     udpdport,
                     len(data))
+
+        if configopts['writepcap']:
+            fivetuple = ((ipsrc, udpsport), (ipdst, udpdport))
+            revfivetuple = ((ipdst, udpdport), (ipsrc, udpsport))
+
+            if fivetuple in ippacketsdict.keys() and ippacketsdict[fivetuple]['proto'] == 'UDP':
+                key = len(ippacketsdict[fivetuple].keys()) - ipmetavars
+                ippacketsdict[fivetuple][key] = pkt
+                if configopts['verbose']:
+                    print '[DEBUG] handleip - Saved IP/UDP packet to global per-flow dict (Key: %s | Packets: %d)' % (
+                            fivetuple,
+                            len(ippacketsdict[fivetuple]) - ipmetavars)
+
+            elif revfivetuple in ippacketsdict.keys() and ippacketsdict[revfivetuple]['proto'] == 'UDP':
+                key = len(ippacketsdict[revfivetuple].keys()) - ipmetavars
+                ippacketsdict[revfivetuple][key] = pkt
+                if configopts['verbose']:
+                    print '[DEBUG] handleip - Saved IP/UDP packet to global per-flow dict (Key: %s | Packets: %d)' % (
+                            revfivetuple,
+                            len(ippacketsdict[revfivetuple]) - ipmetavars)
+
+            else:
+                ippacketsdict[fivetuple] = {    'proto': 'UDP',
+                                                'id': 0,
+                                                'matched': False,
+                                                0: pkt
+                                            }
+                if configopts['verbose']:
+                    print '[DEBUG] handleip - Saved IP/UDP packet to global per-flow dict (Key: %s | Packets: %d)' % (
+                            fivetuple,
+                            len(ippacketsdict[fivetuple]) - ipmetavars)
+
 
 

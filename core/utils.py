@@ -7,13 +7,72 @@ if configopts['regexengine'] == 're2':
 else:
     import re
 
-import pickle, collections, json
+import sys, os, pickle, collections, json, struct, binascii, random
 from termcolor import colored
 
 
 # when stdout has to be mute'd
 class NullDevice():
     def write(self, s): pass
+
+
+# write some packet data to a pcap file
+def pcapwriter(filename, pktlist):
+    pcap_endian = '='
+    pcap_magic = 0xA1B2C3D4
+    pcap_version_major = 2
+    pcap_version_minor = 4
+    pcap_thiszone = 0
+    pcap_sigfigs = 0
+    pcap_snaplen = 65535
+    pcap_network = 1
+    pcap_header = struct.pack(
+        pcap_endian + 'IHHIIII',
+        pcap_magic,
+        pcap_version_major,
+        pcap_version_minor,
+        pcap_thiszone,
+        pcap_sigfigs,
+        pcap_snaplen,
+        pcap_network)
+
+    pcap_ts_sec = 0x50F551DD
+    pcap_ts_usec = 0x0008BD2E
+    pcap_incl_len = 0
+    pcap_orig_len = 0
+
+    ethernet = ('00 0a 00 0a 00 0a'
+                  '00 0b 00 0b 00 0b'
+                  '08 00')
+    eth_header = binascii.a2b_hex(''.join(ethernet.split()))
+
+    fo = open(filename, 'wb')
+    fo.write(pcap_header)
+    for pkt in pktlist:
+        pcap_ts_usec += random.randint(1000, 3000)
+        pcap_incl_len = len(pkt) + 14
+        pcap_orig_len = len(pkt) + 14
+        pkt_header = struct.pack(pcap_endian + 'IIII',
+                    pcap_ts_sec,
+                    pcap_ts_usec,
+                    pcap_incl_len,
+                    pcap_orig_len)
+        fo.write(pkt_header)
+        fo.write(eth_header)
+        fo.write(pkt)
+
+
+# write some data to a file
+def writetofile(filename, data):
+    try:
+        if not os.path.isdir(configopts['logdir']): os.makedirs(configopts['logdir'])
+    except OSError, oserr: print '[-] writetofile: %s' % oserr
+
+    try:
+        if configopts['linemode']: file = open(filename, 'ab+')
+        else: file = open(filename, 'wb+')
+        file.write(data)
+    except IOError, io: print '[-] writetofile - %s' % io
 
 
 # sort and print a dict

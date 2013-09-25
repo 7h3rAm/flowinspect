@@ -2,9 +2,9 @@
 # tracks sessions, identifies direction, populates data buffers, calls inspect, and calls show udpmatches
 
 import datetime, nids
-from globals import configopts, openudpflows, matchstats
+from globals import configopts, openudpflows, matchstats, ippacketsdict
 from inspector import inspect
-from utils import getregexpattern, hexdump, printable
+from utils import getregexpattern, hexdump, printable, writetofile
 
 
 def isudpcts(addr):
@@ -169,6 +169,31 @@ def handleudp(addr, payload, pkt):
 
     if matched:
         openudpflows[key]['matches'] += 1
+
+        if configopts['writepcap']:
+            if addrkey in ippacketsdict.keys() and ippacketsdict[addrkey]['proto'] == 'UDP':
+                ippacketsdict[addrkey]['matched'] = True
+                ippacketsdict[addrkey]['id'] = configopts['packetct']
+                if configopts['verbose']:
+                    print '[DEBUG] handletcp - [UDP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
+                            configopts['packetct'],
+                            src,
+                            sport,
+                            dst,
+                            dport)
+            else:
+                ((sip, sp), (dip, dp)) = addrkey
+                newaddrkey = ((dip, dp), (sip, sp))
+                if newaddrkey in ippacketsdict.keys() and ippacketsdict[newaddrkey]['proto'] == 'UDP':
+                    ippacketsdict[newaddrkey]['matched'] = True
+                    ippacketsdict[newaddrkey]['id'] = configopts['packetct']
+                else:
+                    print '[DEBUG] handletcp - [UDP#%08d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
+                            configopts['packetct'],
+                            src,
+                            sport,
+                            dst,
+                            dport)
 
         matchstats['start'] += offset
         matchstats['end'] += offset

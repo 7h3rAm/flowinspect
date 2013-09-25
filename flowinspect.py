@@ -7,7 +7,7 @@ __license__ = 'CC-BY-SA 3.0'
 __status__  = 'Development'
 
 
-import os, sys, shutil, argparse, operator
+import os, sys, shutil, argparse
 
 # adding custom modules path to system search paths list 
 # for Python to be able to import flowinspect's core modules
@@ -16,11 +16,11 @@ import os, sys, shutil, argparse, operator
 FLOWINSPECTROOTDIR = os.path.realpath(os.path.dirname(sys.argv[0]))
 sys.path.insert(0, '%s/%s' % (FLOWINSPECTROOTDIR, 'core'))
 
-from globals import configopts, opentcpflows, openudpflows
+from globals import configopts, opentcpflows, openudpflows, ippacketsdict
 from tcphandler import handletcp
 from udphandler import handleudp
 from iphandler import handleip
-from utils import NullDevice, printdict
+from utils import NullDevice, printdict, pcapwriter
 
 try:
     import nids
@@ -101,7 +101,15 @@ def exitwithstats():
     global configopts, openudpflows, opentcpflows
 
     if configopts['verbose'] and (len(opentcpflows) > 0 or len(openudpflows) > 0):
+        print
         dumpopenstreams()
+
+    if len(ippacketsdict) > 0:
+        if configopts['verbose']:
+            print
+            dumpippacketsdict()
+        print
+        writepackets()
 
     print
     if configopts['packetct'] >= 0:
@@ -129,10 +137,7 @@ def exitwithstats():
 
 
 def dumpopenstreams():
-    global openudpflows, opentcpflows
-
     if len(openudpflows) > 0:
-        print
         print '[DEBUG] Dumping open/tracked UDP streams: %d' % (len(openudpflows))
 
         for (key, value) in openudpflows.items():
@@ -178,7 +183,34 @@ def dumpopenstreams():
                     stcdatasize,
                     totdatasize)
 
-    print
+
+def dumpippacketsdict():
+    print '[DEBUG] Dumping IP packets dictionary: %d' % (len(ippacketsdict.keys()))
+    for key in ippacketsdict.keys():
+        ((src, sport), (dst, dport)) = key
+        print '[DEBUG] [%s#%08d] %s:%s - %s:%s (Packets: %d | Matched: %s)' % (
+            ippacketsdict[key]['proto'],
+            ippacketsdict[key]['id'],
+            src,
+            sport,
+            dst,
+            dport,
+            len(ippacketsdict[key].keys()) - 2,
+            ippacketsdict[key]['matched'])
+
+
+def writepackets():
+    pktlist = []
+    for key in ippacketsdict.keys():
+        if ippacketsdict[key]['matched']:
+            del pktlist[:]
+            ((src, sport), (dst, dport)) = key
+            pcapfile = '%s-%08d-%s.%s-%s.%s.pcap' % (ippacketsdict[key]['proto'], ippacketsdict[key]['id'], src, sport, dst, dport)
+            for subkey in ippacketsdict[key].keys():
+                if subkey not in ['proto', 'id', 'matched']:
+                    pktlist.append(ippacketsdict[key][subkey])
+            pcapwriter(pcapfile, pktlist)
+        del ippacketsdict[key]
 
 
 def dumpargsstats(configopts):
@@ -631,6 +663,13 @@ def main():
                                     required=False,
                                     help='enable TCP multi match mode')
     misc_options.add_argument(
+                                    '-Z',
+                                    dest='writepcap',
+                                    default=False,
+                                    action='store_true',
+                                    required=False,
+                                    help='write matching flows to pcap')
+    misc_options.add_argument(
                                     '-n',
                                     dest='confirm',
                                     default=False,
@@ -863,6 +902,9 @@ def main():
 
     if args.tcpmultimatch:
         configopts['tcpmultimatch'] = True
+
+    if args.writepcap:
+        configopts['writepcap'] = True
 
     if args.colored:
         configopts['colored'] = True

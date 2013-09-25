@@ -1,7 +1,10 @@
 # globals 
 
+from collections import OrderedDict
+
 
 dfapartialmatches = {}
+ippacketsdict = OrderedDict({})
 openudpflows = {}
 opentcpflows = {}
 
@@ -119,6 +122,7 @@ configopts = {
     'version': 0.2,
 
     'writelogs': False,
+    'writepcap': False,
 
     'yaraengine': None
 }
