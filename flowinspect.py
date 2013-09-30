@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 __author__  = 'Ankur Tyagi (7h3rAm)'
 __email__   = '7h3rAm [at] gmail [dot] com'
@@ -17,7 +17,7 @@ FLOWINSPECTROOTDIR = os.path.realpath(os.path.dirname(sys.argv[0]))
 sys.path.insert(0, '%s/%s' % (FLOWINSPECTROOTDIR, 'core'))
 
 from globals import configopts, opentcpflows, openudpflows, ippacketsdict
-from functions import dumpargsstats, exitwithstats
+from functions import validatedfaexpr, dumpargsstats, exitwithstats
 from tcphandler import handletcp
 from udphandler import handleudp
 from iphandler import handleip
@@ -699,11 +699,11 @@ def main():
         print '[-] NIDS error: %s' % nx
         print
         sys.exit(1)
-    except Exception, ex:
-        print
-        print '[-] Exception: %s' % ex
-        print
-        sys.exit(1)
+#    except Exception, ex:
+#        print
+#        print '[-] Exception: %s' % ex
+#        print
+#        sys.exit(1)
 
     exitwithstats()
 

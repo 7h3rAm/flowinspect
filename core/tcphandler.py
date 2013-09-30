@@ -8,8 +8,6 @@ from utils import getregexpattern, hexdump, printable, writetofile
 
 
 def handletcp(tcp):
-    global configopts, opentcpflows, regexengine, shellcodeengine, dfaengine
-
     id = 0
     showmatch = False
     addrkey = tcp.addr

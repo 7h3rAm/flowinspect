@@ -6,7 +6,7 @@ from udphandler import handleudp
 from iphandler import handleip
 from utils import printdict, pcapwriter
 
-import sys
+import sys, re
 
 
 def validatedfaexpr(expr):
@@ -21,19 +21,6 @@ def validatedfaexpr(expr):
         memberid = 'm%02d' % (memberct+1)
         configopts['dfalist'].append(expr)
         return (memberid, expr.strip())
-
-def writetofile(filename, data):
-    global configopts, opentcpflows
-
-    try:
-        if not os.path.isdir(configopts['logdir']): os.makedirs(configopts['logdir'])
-    except OSError, oserr: print '[-] %s' % oserr
-
-    try:
-        if configopts['linemode']: file = open(filename, 'ab+')
-        else: file = open(filename, 'wb+')
-        file.write(data)
-    except IOError, io: print '[-] %s' % io
 
 
 def exitwithstats():
@@ -142,14 +129,18 @@ def writepackets():
     pktlist = []
     for key in ippacketsdict.keys():
         if ippacketsdict[key]['matched']:
+            packets = 0
             del pktlist[:]
             ((src, sport), (dst, dport)) = key
             pcapfile = '%s-%08d-%s.%s-%s.%s.pcap' % (ippacketsdict[key]['proto'], ippacketsdict[key]['id'], src, sport, dst, dport)
             for subkey in ippacketsdict[key].keys():
                 if subkey not in ['proto', 'id', 'matched']:
                     pktlist.append(ippacketsdict[key][subkey])
+                    packets += 1
             pcapwriter(pcapfile, pktlist)
-        del ippacketsdict[key]
+            if configopts['verbose']:
+                print '[DEBUG] writepackets - Wrote %d packets to %s' % (packets, pcapfile)
+            del ippacketsdict[key]
 
 
 def dumpargsstats(configopts):

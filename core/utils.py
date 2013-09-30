@@ -8,7 +8,12 @@ else:
     import re
 
 import sys, os, pickle, collections, json, struct, binascii, random
-from termcolor import colored
+
+try:
+    from termcolor import colored
+except ImportError, ex:
+    print '[!] Import failed: %s' % (ex)
+    configopts['colored'] = False
 
 
 # when stdout has to be mute'd
@@ -99,7 +104,7 @@ def hexdump(data, color, length=16, sep='.'):
         printablechars = ''.join(["%s" % ((ord(x) <= 127 and FILTER[ord(x)]) or sep) for x in chars])
         lines.append("%08x:  %-*s  |%s|\n" % (c, length*3, hex, printablechars))
 
-    if color:
+    if color and configopts['colored']:
         if color == configopts['ctsoutcolor']:
             print colored(''.join(lines), configopts['ctsoutcolor'], attrs=configopts['ctsoutcolorattrs'])
         elif color == configopts['stcoutcolor']:
@@ -110,7 +115,7 @@ def hexdump(data, color, length=16, sep='.'):
 
 # ascii printable filter for raw bytes
 def printable(data, color):
-    if color:
+    if color and configopts['colored']:
         if color == configopts['ctsoutcolor']:
             print colored(''.join([ch for ch in data if ord(ch) > 31 and ord(ch) < 126
                                    or ord(ch) == 9

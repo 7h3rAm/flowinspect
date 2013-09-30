@@ -516,8 +516,6 @@ def yaramatchcallback(data):
 
 
 def graphdfatransitions(graphtitle, filename, dfaobject):
-    global configopts
-
     if configopts['graph']:
         class NullDevice():
             def write(self, s): pass

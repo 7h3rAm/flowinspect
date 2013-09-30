@@ -1,5 +1,9 @@
-pynids
-re2
-fuzzywuzzy
-pylibemu
-pydot
+1. python 2.7 (for ordereddict)
+2. pynids - http://jon.oberheide.org/pynids/ -> needs libpcap-dev, libnet1-dev, libnet1, libglib2.0-dev and compile libnids inside pynids manually
+3. pydfa -> pydot (dot_parser import error) (-1 patch to pydfa/pydfa/graph.py)
+4. pylibemu -> libemu (http://blog.xanda.org/2012/05/16/installation-of-libemu-and-pylibemu-on-ubuntu/ | http://kaz.dl.sourceforge.net/project/nepenthes/libemu%20development/0.2.0/libemu-0.2.0.tar.gz | https://github.com/buffer/thug/issues/28)
+5. pydot, termcolor, fuzzywuzzy, 
+
+IMP:
+1. switch python versions: https://gist.github.com/whop/2659457
+
