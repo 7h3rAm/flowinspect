@@ -173,7 +173,7 @@ __Inspect HTTP streams for Metasploit ie_cgenericelement_uaf exploit (CVE-2013-1
 ```
 
 
-__Scan for SIP INVITE messages using fuzzy string matching (_inite_ as the query string and min. match threshold of 50%)__:
+__Scan for SIP INVITE messages using fuzzy string matching (inite as the query string and min. match threshold of 50%)__:
 ```c
 ./flowinspect.py -p metasploit-sip-invite-spoof.pcap -H 'inite' -r 50
 
