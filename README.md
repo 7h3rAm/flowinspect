@@ -11,26 +11,28 @@ It uses [__libnids__](http://libnids.sourceforge.net/) (via its python bindings 
 * [__libemu__](http://libemu.carnivore.it/) (python bindings: [__pylibemu__](https://github.com/buffer/pylibemu))
 * [__yara__](http://code.google.com/p/yara-project/) (python bindings: [__yara-python__](http://code.google.com/p/yara-project/source/browse/trunk/yara-python/README))
 
-Regex matches are performed using the __re2__ module that supports PCRE, case-insensitive, invert and multiline matches, etc. It has enormous performance gains compared to the built-in __re__ module in Python(which is used as a fallback in case __re2__ is not installed).
+Regex matches are performed using the re2 library and its Python bindings, pyre2, that supports PCRE, case-insensitive, invert and multiline matches, etc. It has enormous performance gains compared to the built-in re module in Python (which is used as a fallback in case re2 is not installed).
 
-__Libemu__ is used for shellcode detection purposes. The GetPC heuristics within __libemu__ provides a decent detection ratio. There are a few cases where __libemu__ fails but for most usecases it is good enough.
+Fuzzy string matching features are carried out via the fuzzywuzzy module. It helps to perform both an exact and relative string mathing. A default match threshold of 75 is used as a default and can be overridden through cli.
 
-__Yara__ provides signature-based malware identification and classification facility. Its __yara-python__ bindings in __flowinspect__ allows usage of existing/custom signature files on network streams.
+Libemu and its Python bindings, pylibemu, are used for shellcode detection. The GetPC heuristics used by libemu provide a decent detection ratio. There are a few cases where libemu simply fails but for most usecases it is good enough.
 
-Fuzzy string matching features have been added via the __fuzzywuzzy__ module. A default match threshold of 75 is used which can be overridden through cli.
+Yara is a signature-based malware identification and classification tool. Its yara-python bindings provide an API to use existing/custom signature files on an input buffer which in this case is a network stream.
 
-Inspection could be requested for any of the CTS/STC/ANY directions and their combinations. Inspection buffers are populated as network traffic arrives and as such CTS matches (CTS or ANY) happen first. If more than one mode of inspection is requested, flows are inspected in the following order: regex, fuzzy, libemu, and finally yara. For TCP, if any of these inspection mode succeeds, the next in oder are skipped and the flow is not tracked any further.
+Inspection could be requested for any of the CTS/STC/ANY directions or their combinations. Inspection buffers are populated as network traffic arrives and as such CTS matches (CTS or ANY) happen first. If more than one mode of inspection is requested, flows are inspected in the following order: regex, fuzzy, libemu, and finally yara. For TCP, if any of the inspection modes succeed, the matched flow won't be inspected any further. This is an optimistic approach and is enabled by default. However if for a certain usecase a TCP stream has to inspected multiple times, it can be requested explicitly using a cli.
 
-Inspection could also be disabled completely if required via the linemode option. This mode is really helpful when combined with a suitable outmode to have a look at network communication as it is happening over wire. If no inspection method is provided via cli, linemode is the default fallback.
+Inspection could be completely disabled if required via the linemode cli option. This mode is really helpful and when combined with a suitable outmode helps to have a look at network communication as-is while its happening over wire. Linemode is auto enabled as a fallback if no inspection mode is provided via cli.
 
-For TCP, the first pattern to match on a flow will be the last time it will be tested. For UDP, matches happen on a per-packet basis and as such for a flow, subsequent packets will be tested even after a match has already been found.
+For UDP, matches happen on a per-packet basis and as such subsequent packets will be tested even after a match has already been found on a UDP flow. Since only subsequent packets and their content is inspected, it ensures that the data already matched during earlier inspection cycles is not inspected again.
 
-Match scope could be limited through BPF expressions, Snort-like offset-depth content modifiers or via packets/streams inspection limit flags. Matched flows could be killed if need be. Flows could also be logged to files in addition to being dumped on stdout. A few useful output modes (quite, meta, hex, print, raw) help with further analysis.
+Match scope could be limited through BPF expressions, Snort-like offset-depth content modifiers or via packets/streams inspection limit cli options. For TCP, matched flows could also be killed if need be. Flows could also be logged to files in addition to being dumped on stdout. A few useful output modes (quite, meta, hex, print, raw) help with further analysis. The meta outmode is expecially useful as it shows some really important match specific details like the total size of matched content, offset of the start of a match in the network stream, the packet ids a match spans, the direction of the packet on which a match happened, etc.
+
+Pcap generation for matching flows is also supported. If enabled, it would dump all the packets from the start upto the end of the flow. Matched TCP flows are dumped as soon as a close/reset is seen and for those flows where we don't see a close/reset, they are dumped before the tool exits. For UDP, since there is no close/reset like state information available, they are dumped only when the tool exits. This ensure that all the packets, even those that arrive post match, are captured in the flow pcap. Except for the custom pcap global header, per-packet pcap header and the Ethernet II L2 header (which is not seen by flowinspect), everything above remains as-is in the dumped packet captures.
 
 
 HELP:
 -----
-```sh
+```c
         ______              _                            __
        / __/ /___ _      __(_)___  _________  ___  _____/ /_
       / /_/ / __ \ | /| / / / __ \/ ___/ __ \/ _ \/ ___/ __/
@@ -38,20 +40,20 @@ HELP:
     /_/ /_/\____/|__/|__/_/_/ /_/____/ .___/\___/\___/\__/
                                     /_/
     
-flowinspect.py v0.2 - A tool for network traffic inspection
-Ankur Tyagi (7h3rAm) @ Juniper Networks Security Research Group
+flowinspect v0.2 - A network inspection tool
+Ankur Tyagi (7h3rAm [at] gmail [dot] com)
 
 usage: flowinspect.py [-h] (-p --pcap | -d --device) [-c --cregex]
                       [-s --sregex] [-a --aregex] [-i] [-m] [-G --cfuzz]
                       [-H --sfuzz] [-I --afuzz] [-r fuzzminthreshold]
                       [-C --cdfa] [-S --sdfa] [-A --adfa] [-l] [-X --dfaexpr]
                       [-g [graphdir]] [-P --cyararules] [-Q --syararules]
-                      [-R --ayararules] [-M] [-y] [-O --offset] [-D --depth]
-                      [-T --maxinspstreams] [-U --maxinsppackets]
-                      [-t --maxdispstreams] [-u --maxdisppackets]
-                      [-b --maxdispbytes] [-w [logdir]]
+                      [-R --ayararules] [-M] [-y] [-Y --emuprofileoutsize]
+                      [-O --offset] [-D --depth] [-T --maxinspstreams]
+                      [-U --maxinsppackets] [-t --maxdispstreams]
+                      [-u --maxdisppackets] [-b --maxdispbytes] [-w [logdir]]
                       [-o {quite,meta,hex,print,raw}] [-f --bpf] [-v] [-V]
-                      [-k] [-n] [-L]
+                      [-e] [-k] [-j] [-Z] [-n] [-L]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -93,6 +95,9 @@ Yara Rules per Direction:
 Shellcode Detection:
   -M                    enable shellcode detection
   -y                    generate emulator profile for detected shellcode
+  -Y --emuprofileoutsize
+                        emulator profile memory size (default 1024K | max:
+                        10240K)
 
 Content Modifiers:
   -O --offset           bytes to skip before matching
@@ -116,7 +121,10 @@ Misc. Options:
   -f --bpf              BPF expression
   -v                    invert match
   -V                    verbose output
+  -e                    highlight CTS/STC matches
   -k                    kill matching TCP stream
+  -j                    enable TCP multi match mode
+  -Z                    write matching flows to pcap
   -n                    confirm before initializing NIDS
   -L                    enable linemode (disables inspection)
 ```
@@ -124,8 +132,8 @@ Misc. Options:
 
 EXAMPLES:
 ---------
-Look at HTTP sessions:
-```sh
+__Look at live HTTP sessions__:
+```c
 ./flowinspect.py -d eth0 -c "^(GET|POST|HEAD|PUT).*" -f "tcp and port 80" -o print
 
 GET / HTTP/1.1
@@ -138,8 +146,8 @@ Accept: */*
 ```
 
 
-Inspect HTTP streams for Metasploit ie_cgenericelement_uaf exploit (CVE-2013-1347):
-```sh
+__Inspect HTTP streams for Metasploit ie_cgenericelement_uaf exploit (CVE-2013-1347)__:
+```c
 ./flowinspect.py -p cgenericelement.pcap -s 'CollectGarbage\(\).*mstime_malloc\({shellcode:' -b32
 
 [MATCH] (00000006/00000001) [TCP#00000002] 10.204.136.200:39771 - 10.204.138.121:8080 matches regex: 'CollectGarbage\\(\\).*mstime_malloc\\({shellcode:'
@@ -165,8 +173,8 @@ Inspect HTTP streams for Metasploit ie_cgenericelement_uaf exploit (CVE-2013-134
 ```
 
 
-Scan for SIP INVITE messages using fuzzy string matching (_inite_ as the query string and min. match threshold of 50%):
-```sh
+__Scan for SIP INVITE messages using fuzzy string matching (_inite_ as the query string and min. match threshold of 50%)__:
+```c
 ./flowinspect.py -p metasploit-sip-invite-spoof.pcap -H 'inite' -r 50
 
 [MATCH] (00000002/00000001) [UDP#00000002] 10.0.1.45:10270 < 10.0.1.199:5060 
@@ -194,8 +202,8 @@ Scan for SIP INVITE messages using fuzzy string matching (_inite_ as the query s
 ```
 
 
-Scan for presence of shellcode in a network stream (currently on ANY direction only):
-```sh
+__Scan for the presence of shellcode in a network stream (currently on ANY direction only)__:
+```c
 ./flowinspect.py -p shellcodepcaps/millenium.pcap -M
 
 [MATCH] (00000004/00000001) [TCP#00000001] 10.204.136.200:32822 - 10.204.138.121:8080 contains shellcode (Offset: 4034)
@@ -226,11 +234,11 @@ Scan for presence of shellcode in a network stream (currently on ANY direction o
 ```
 
 
-Use a Yara signature to look for UPX packed binaries on STC direction:
-```sh
+__Use a Yara signature to look for UPX packed binaries on STC direction__:
+```c
 ./flowinspect.py -p e03a7f89a6cbc45144aafac2779c7b6d.pcap -R upx.yara
 
-[MATCH] (00000156/00000001) [TCP#00000001] 111.110.77.53:54159 - 79.115.117.66:80 matches rule: 'UPX' from ../rulesets/yararules/upx.yara
+[MATCH] (00000156/00000001) [TCP#00000001] 111.110.77.53:54159 - 79.115.117.66:80 matches rule: 'UPX' from upx.yara
 [MATCH] (00000156/00000001) [TCP#00000001] match @ STC[185362:185401] - 39B | packet[156] - packet[156]
 00000000:  ff d5 8d 87 1f 02 00 00 80 20 7f 80 60 28 7f 58   |......... ..`(.X|
 00000010:  50 54 50 53 57 ff d5 58 61 8d 44 24 80 6a 00 39   |PTPSW..Xa.D$.j.9|
@@ -241,12 +249,225 @@ Use a Yara signature to look for UPX packed binaries on STC direction:
 ```
 
 
+__multimatch Demo__:
+First lets test a pcap in the default firstmatch mode:
+
+```c
+./flowinspect.py -p ../testfiles/pcaps/http.cap -s '.*' -b32 
+
+[MATCH] (00000001/00000001) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000001/00000001) [TCP#00000001] match @ STC[0:1380] - 1380B | packet[1] - packet[1]
+00000000:  48 54 54 50 2f 31 2e 31 20 32 30 30 20 4f 4b 0d   |HTTP/1.1 200 OK.|
+00000010:  0a 44 61 74 65 3a 20 54 68 75 2c 20 31 33 20 4d   |.Date: Thu, 13 M|
+
+[MATCH] (00000001/00000001) [UDP#00000001] 145.253.2.203:53 < 145.254.160.237:3009 matches regex: '.*'
+[MATCH] (00000001/00000001) [UDP#00000001] match @ STC[0:146] - 146B
+00000000:  00 23 81 80 00 01 00 04 00 00 00 00 07 70 61 67   |.#...........pag|
+00000010:  65 61 64 32 11 67 6f 6f 67 6c 65 73 79 6e 64 69   |ead2.googlesyndi|
+
+[U] Processed: 1 | Matches: 1 | Shortest: 146B (#1) | Longest: 146B (#1)
+[T] Processed: 1 | Matches: 1 | Shortest: 1380B (#1) | Longest: 1380B (#1)
+[+] Flowsrch session complete. Exiting.
+```
+
+There's exactly 1 match for both UDP and TCP flows in the input pcap. The number of flows processed is 1 as well. Since the regex was a .* that would obviously match any data in a flow, this means either the pcap has just 2 flows or only two flows have data in them. Let's now test the same pcap using the .* regex in multimatch mode:
+
+```c
+./flowinspect.py -p ../testfiles/pcaps/http.cap -s '.*' -b32 -j
+
+[MATCH] (00000001/00000001) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000001/00000001) [TCP#00000001] match @ STC[0:1380] - 1380B | packet[1] - packet[1]
+00000000:  48 54 54 50 2f 31 2e 31 20 32 30 30 20 4f 4b 0d   |HTTP/1.1 200 OK.|
+00000010:  0a 44 61 74 65 3a 20 54 68 75 2c 20 31 33 20 4d   |.Date: Thu, 13 M|
+
+[MATCH] (00000002/00000002) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000002/00000002) [TCP#00000001] match @ STC[1380:2760] - 1380B | packet[2] - packet[2]
+00000000:  20 20 20 20 20 20 20 20 20 20 3c 61 20 68 72 65   |          <a hre|
+00000010:  66 3d 22 73 65 61 72 63 68 2e 68 74 6d 6c 22 3e   |f="search.html">|
+
+[MATCH] (00000003/00000003) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000003/00000003) [TCP#00000001] match @ STC[2760:4140] - 1380B | packet[3] - packet[3]
+00000000:  33 36 32 39 22 3b 0a 67 6f 6f 67 6c 65 5f 61 64   |3629";.google_ad|
+00000010:  5f 77 69 64 74 68 20 3d 20 34 36 38 3b 0a 67 6f   |_width = 468;.go|
+
+[MATCH] (00000004/00000004) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000004/00000004) [TCP#00000001] match @ STC[4140:5520] - 1380B | packet[4] - packet[4]
+00000000:  22 66 74 70 3a 2f 2f 66 74 70 2e 70 6c 61 6e 65   |"ftp://ftp.plane|
+00000010:  74 6d 69 72 72 6f 72 2e 63 6f 6d 2f 70 75 62 2f   |tmirror.com/pub/|
+
+[MATCH] (00000005/00000005) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000005/00000005) [TCP#00000001] match @ STC[5520:6900] - 1380B | packet[5] - packet[5]
+00000000:  65 74 68 65 72 65 61 6c 2f 77 69 6e 33 32 2f 22   |ethereal/win32/"|
+00000010:  3e 4d 61 69 6e 20 73 69 74 65 3c 2f 61 3e 0a 3c   |>Main site</a>.<|
+
+[MATCH] (00000006/00000006) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000006/00000006) [TCP#00000001] match @ STC[6900:8280] - 1380B | packet[6] - packet[6]
+00000000:  72 65 74 61 70 70 65 64 2e 6e 65 74 2f 70 75 62   |retapped.net/pub|
+00000010:  2f 73 65 63 75 72 69 74 79 2f 70 61 63 6b 65 74   |/security/packet|
+
+[MATCH] (00000001/00000001) [UDP#00000001] 145.253.2.203:53 < 145.254.160.237:3009 matches regex: '.*'
+[MATCH] (00000001/00000001) [UDP#00000001] match @ STC[0:146] - 146B
+00000000:  00 23 81 80 00 01 00 04 00 00 00 00 07 70 61 67   |.#...........pag|
+00000010:  65 61 64 32 11 67 6f 6f 67 6c 65 73 79 6e 64 69   |ead2.googlesyndi|
+
+[MATCH] (00000007/00000007) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000007/00000007) [TCP#00000001] match @ STC[8280:9660] - 1380B | packet[7] - packet[7]
+00000000:  72 65 2f 65 74 68 65 72 65 61 6c 2f 73 6f 6c 61   |re/ethereal/sola|
+00000010:  72 69 73 2f 22 3e 41 75 73 74 72 61 6c 69 61 3c   |ris/">Australia<|
+
+[MATCH] (00000008/00000008) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000008/00000008) [TCP#00000001] match @ STC[9660:11040] - 1380B | packet[8] - packet[8]
+00000000:  20 20 20 3c 61 20 68 72 65 66 3d 22 68 74 74 70   |   <a href="http|
+00000010:  3a 2f 2f 70 61 63 6b 61 67 65 73 2e 64 65 62 69   |://packages.debi|
+
+[MATCH] (00000009/00000009) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000009/00000009) [TCP#00000001] match @ STC[11040:12420] - 1380B | packet[9] - packet[9]
+00000000:  69 63 61 3c 2f 61 3e 0a 20 20 20 20 3c 62 72 3e   |ica</a>.    <br>|
+00000010:  28 6d 6f 72 65 20 6d 69 72 72 6f 72 73 20 61 72   |(more mirrors ar|
+
+[MATCH] (00000010/00000010) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000010/00000010) [TCP#00000001] match @ STC[12420:13800] - 1380B | packet[10] - packet[10]
+00000000:  6b 67 73 72 63 2f 6e 65 74 2f 65 74 68 65 72 65   |kgsrc/net/ethere|
+00000010:  61 6c 2f 52 45 41 44 4d 45 2e 68 74 6d 6c 22 3e   |al/README.html">|
+
+[MATCH] (00000011/00000011) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000011/00000011) [TCP#00000001] match @ STC[13800:15180] - 1380B | packet[11] - packet[11]
+00000000:  76 65 6e 22 3e 0a 20 20 3c 74 64 20 76 61 6c 69   |ven">.  <td vali|
+00000010:  67 6e 3d 22 74 6f 70 22 3e 53 47 49 3a 3c 62 72   |gn="top">SGI:<br|
+
+[MATCH] (00000012/00000012) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000012/00000012) [TCP#00000001] match @ STC[15180:16560] - 1380B | packet[12] - packet[12]
+00000000:  77 77 2e 73 75 73 65 2e 63 6f 6d 2f 75 73 2f 70   |ww.suse.com/us/p|
+00000010:  72 69 76 61 74 65 2f 64 6f 77 6e 6c 6f 61 64 2f   |rivate/download/|
+
+[MATCH] (00000013/00000013) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000013/00000013) [TCP#00000001] match @ STC[16560:17940] - 1380B | packet[13] - packet[13]
+00000000:  65 2e 0a 3c 2f 70 3e 0a 3c 68 34 3e 44 6f 63 75   |e..</p>.<h4>Docu|
+00000010:  6d 65 6e 74 61 74 69 6f 6e 3c 2f 68 34 3e 0a 3c   |mentation</h4>.<|
+
+[MATCH] (00000014/00000014) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000014/00000014) [TCP#00000001] match @ STC[17940:18364] - 424B | packet[14] - packet[14]
+00000000:  65 6e 64 20 73 75 70 70 6f 72 74 20 71 75 65 73   |end support ques|
+00000010:  74 69 6f 6e 73 20 61 62 6f 75 74 20 45 74 68 65   |tions about Ethe|
+
+[U] Processed: 1 | Matches: 1 | Shortest: 146B (#1) | Longest: 146B (#1)
+[T] Processed: 1 | Matches: 14 | Shortest: 424B (#1) | Longest: 1380B (#1)
+[+] Flowsrch session complete. Exiting.
+```
+
+This time we see a total of 14 matches for TCP flow and 1 match for UDP flow. Since the processed count is still 1, the lone TCP flow was inspected multiple times and the .* regex passed on each occasion. Note that offsets of all the 14 matches are different. This implies that for each inspection cycle, content that was matched earlier is not inspected again, assuring absolutely unique matches for the input regex even when a stream in inspected multiple times.
+
+
+__Write matching flows to a pcap__:
+```c
+./flowinspect.py -p ../testfiles/pcaps/http.cap -s '.*' -b32 -Z
+
+[MATCH] (00000001/00000001) [TCP#00000001] 145.254.160.237:3372 < 65.208.228.223:80 matches regex: '.*'
+[MATCH] (00000001/00000001) [TCP#00000001] match @ STC[0:1380] - 1380B | packet[1] - packet[1]
+00000000:  48 54 54 50 2f 31 2e 31 20 32 30 30 20 4f 4b 0d   |HTTP/1.1 200 OK.|
+00000010:  0a 44 61 74 65 3a 20 54 68 75 2c 20 31 33 20 4d   |.Date: Thu, 13 M|
+
+[MATCH] (00000001/00000001) [UDP#00000001] 145.253.2.203:53 < 145.254.160.237:3009 matches regex: '.*'
+[MATCH] (00000001/00000001) [UDP#00000001] match @ STC[0:146] - 146B
+00000000:  00 23 81 80 00 01 00 04 00 00 00 00 07 70 61 67   |.#...........pag|
+00000010:  65 61 64 32 11 67 6f 6f 67 6c 65 73 79 6e 64 69   |ead2.googlesyndi|
+
+[U] Processed: 1 | Matches: 1 | Shortest: 146B (#1) | Longest: 146B (#1)
+[T] Processed: 1 | Matches: 1 | Shortest: 1380B (#1) | Longest: 1380B (#1)
+[+] Flowsrch session complete. Exiting.
+
+
+ls -l *.pcap
+
+-rw-r--r-- 1 root root 21263 Oct  1 10:25 TCP-00000001-145.254.160.237.3372-65.208.228.223.80.pcap
+-rw-r--r-- 1 root root   333 Oct  1 10:25 UDP-00000001-145.254.160.237.3009-145.253.2.203.53.pcap
+
+
+capinfos TCP-00000001-145.254.160.237.3372-65.208.228.223.80.pcap 
+
+File name:           TCP-00000001-145.254.160.237.3372-65.208.228.223.80.pcap
+File type:           Wireshark/tcpdump/... - libpcap
+File encapsulation:  Ethernet
+Packet size limit:   file hdr: 65535 bytes
+Number of packets:   34
+File size:           21263 bytes
+Data size:           20695 bytes
+Capture duration:    0 seconds
+Start time:          Tue Jan 15 18:25:57 2013
+End time:            Tue Jan 15 18:25:57 2013
+Data byte rate:      334156.35 bytes/sec
+Data bit rate:       2673250.78 bits/sec
+Average packet size: 608.68 bytes
+Average packet rate: 548.99 packets/sec
+SHA1:                23e0883082f69aa70dde186262f72b938130d597
+RIPEMD160:           26105199653b9d93d253e0c0ad539adaed1cb6f6
+MD5:                 9c8c0d0ca5bc27d726d8935da079af6e
+Strict time order:   True
+
+
+tshark -q -z conv,ip -r TCP-00000001-145.254.160.237.3372-65.208.228.223.80.pcap 
+
+OOPS: dissector table "sctp.ppi" doesn't exist
+Protocol being registered is "Datagram Transport Layer Security"
+Running as user "root" and group "root". This could be dangerous.
+================================================================================
+IPv4 Conversations
+Filter:<No Filter>
+                                               |       <-      | |       ->      | |     Total     |   Rel. Start   |   Duration   |
+                                               | Frames  Bytes | | Frames  Bytes | | Frames  Bytes |                |              |
+145.254.160.237      <-> 65.208.228.223            18     19344      16      1351      34     20695     0.000000000         0.0619
+================================================================================
+
+
+capinfos UDP-00000001-145.254.160.237.3009-145.253.2.203.53.pcap 
+
+File name:           UDP-00000001-145.254.160.237.3009-145.253.2.203.53.pcap
+File type:           Wireshark/tcpdump/... - libpcap
+File encapsulation:  Ethernet
+Packet size limit:   file hdr: 65535 bytes
+Number of packets:   2
+File size:           333 bytes
+Data size:           277 bytes
+Capture duration:    0 seconds
+Start time:          Tue Jan 15 18:25:57 2013
+End time:            Tue Jan 15 18:25:57 2013
+Data byte rate:      98193.22 bytes/sec
+Data bit rate:       785545.78 bits/sec
+Average packet size: 138.50 bytes
+Average packet rate: 708.98 packets/sec
+SHA1:                ea17a52d3f7b95543c36a726c67ad1b31f03c978
+RIPEMD160:           47604bc8244c07e5946102afa8b84747263b834c
+MD5:                 2ae39fee3f39098f8fdf0f7560ece8e4
+Strict time order:   True
+
+
+tshark -q -z conv,ip -r UDP-00000001-145.254.160.237.3009-145.253.2.203.53.pcap 
+
+OOPS: dissector table "sctp.ppi" doesn't exist
+Protocol being registered is "Datagram Transport Layer Security"
+Running as user "root" and group "root". This could be dangerous.
+================================================================================
+IPv4 Conversations
+Filter:<No Filter>
+                                               |       <-      | |       ->      | |     Total     |   Rel. Start   |   Duration   |
+                                               | Frames  Bytes | | Frames  Bytes | | Frames  Bytes |                |              |
+145.254.160.237      <-> 145.253.2.203              1       188       1        89       2       277     0.000000000         0.0028
+================================================================================
+
+```
+
+
 INSTALLATION:
 -------------
-Make sure you have a working Python installation. The only other hard-dependency is __pynids__. For the four inspection modes, you need respective python modules to be installed correctly. Reach out if you need help setting up pynids or for any other queries.
+
+1. Make sure you have a working Python 2.7 installation.
+2. Obtain and install pynids. For those on Ubuntu, please make sure you have libpcap-dev, libnet1, libnet1-dev, and libglib2.0-dev packages pre-installed before installing pynids. Also, you might have to manually install libnids that comes bundled with pynids using the usual configure && make && make install process.
+
+For the four inspection modes, you need respective python packages () to be installed and configured correctly. Reach out if you need help setting these up or for any other queries.
 
 
 STATUS:
 -------
-A few [issues](https://github.com/7h3rAm/flowinspect/blob/master/issues) have been found through some basic testing I did during initial development. They are being worked upon. Please feel free to use __flowinspect__ and let me know if you find any others. There's a [todo](https://github.com/7h3rAm/flowinspect/blob/develop/todo) list as well that you can use if you would like to contribute.
+A few [issues](https://github.com/7h3rAm/flowinspect/blob/master/issues) have been found through some basic testing I did during initial development. They are being worked upon. Please feel free to use flowinspect and let me know if you find any others. There's a [todo](https://github.com/7h3rAm/flowinspect/blob/develop/todo) list as well that could be useful if you are willing to contribute.
+
 

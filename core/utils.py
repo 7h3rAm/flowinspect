@@ -1,19 +1,7 @@
 # flowinspect misc. utilities
 
 from globals import configopts
-
-if configopts['regexengine'] == 're2':
-    import re2
-else:
-    import re
-
 import sys, os, pickle, collections, json, struct, binascii, random
-
-try:
-    from termcolor import colored
-except ImportError, ex:
-    print '[!] Import failed: %s' % (ex)
-    configopts['colored'] = False
 
 
 # when stdout has to be mute'd
@@ -85,14 +73,21 @@ def printdict(dictdata):
     sd = collections.OrderedDict(sorted(dictdata.items()))
     print(json.dumps(sd, indent=4))
 
+
 # get regex pattern from compiled object
 def getregexpattern(regexobj):
+    if configopts['regexengine'] == 're2':
+        import re2
+    else:
+        import re
+
     dumps = pickle.dumps(regexobj)
     regexpattern = re.search("\n\(S'(.*)'\n", dumps).group(1)
     if re.findall(r'\\x[0-9a-f]{2}', regexpattern):
         regexpattern = re2.sub(r'(\\x)([0-9a-f]{2})', r'x\2', regexpattern)
 
     return regexpattern
+
 
 # raw bytes to hexdump filter
 def hexdump(data, color, length=16, sep='.'):
@@ -103,6 +98,12 @@ def hexdump(data, color, length=16, sep='.'):
         hex = ' '.join(["%02x" % ord(x) for x in chars])
         printablechars = ''.join(["%s" % ((ord(x) <= 127 and FILTER[ord(x)]) or sep) for x in chars])
         lines.append("%08x:  %-*s  |%s|\n" % (c, length*3, hex, printablechars))
+
+    if configopts['colored']:
+        try:
+            from termcolor import colored
+        except ImportError, ex:
+            configopts['colored'] = False
 
     if color and configopts['colored']:
         if color == configopts['ctsoutcolor']:
@@ -115,6 +116,12 @@ def hexdump(data, color, length=16, sep='.'):
 
 # ascii printable filter for raw bytes
 def printable(data, color):
+    if configopts['colored']:
+        try:
+            from termcolor import colored
+        except ImportError, ex:
+            configopts['colored'] = False
+
     if color and configopts['colored']:
         if color == configopts['ctsoutcolor']:
             print colored(''.join([ch for ch in data if ord(ch) > 31 and ord(ch) < 126
