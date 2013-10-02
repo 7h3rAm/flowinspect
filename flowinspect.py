@@ -23,6 +23,8 @@ from udphandler import handleudp
 from iphandler import handleip
 from utils import NullDevice
 
+sys.stdout = NullDevice()
+
 try:
     import nids
 except ImportError, ex:
@@ -31,8 +33,12 @@ except ImportError, ex:
     print
     sys.exit(1)
 
-import re
-configopts['regexengine'] = 're'
+try:
+    import re2 as re
+    configopts['regexengine'] = 're2'
+except ImportError, ex:
+    print '[-] Import failed: %s' % ex
+    configopts['regexengine'] = 're'
 
 try:
     from pydfa.pydfa import Rexp
@@ -75,6 +81,8 @@ def main():
     /_/ /_/\____/|__/|__/_/_/ /_/____/ .___/\___/\___/\__/
                                     /_/
     '''
+
+    sys.stdout = sys.__stdout__
     print '%s' % (banner)
     print '%s v%s - %s' % (configopts['name'], configopts['version'], configopts['desc'])
     print '%s' % configopts['author']
@@ -433,8 +441,7 @@ def main():
 
     args = parser.parse_args()
 
-    #sys.stdout = NullDevice()
-
+    sys.stdout = NullDevice()
     if args.pcap:
         configopts['pcap'] = args.pcap
         nids.param('filename', configopts['pcap'])
