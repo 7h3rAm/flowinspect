@@ -23,7 +23,7 @@ ipprotodict = {
 UDPHDRLEN = 8
 
 def handleip(pkt):
-    ipmetavars = 3
+    ipmetavars = configopts['ipmetavars']
 
     iphdr = unpack('!BBHHHBBH4s4s', pkt[:20])
     ipversion = iphdr[0] >> 4
@@ -61,18 +61,6 @@ def handleip(pkt):
         if tcpflags & 32 == 32: tcpflagsstr.append('U')
         tcpflagsstr = "".join(tcpflagsstr)
 
-        if configopts['verbose']:
-            print '[DEBUG] handleip - %s:%s > %s:%s TCP [ flags: %s | seq: %d | ack: %d | win: %d | len: %dB ]' % (
-                    ipsrc,
-                    tcpsport,
-                    ipdst,
-                    tcpdport,
-                    tcpflagsstr,
-                    tcpseq,
-                    tcpack,
-                    tcpwindow,
-                    len(data))
-
         if configopts['writepcap']:
             fivetuple = ((ipsrc, tcpsport), (ipdst, tcpdport))
             revfivetuple = ((ipdst, tcpdport), (ipsrc, tcpsport))
@@ -80,18 +68,12 @@ def handleip(pkt):
             if fivetuple in ippacketsdict.keys() and ippacketsdict[fivetuple]['proto'] == 'TCP':
                 key = len(ippacketsdict[fivetuple].keys()) - ipmetavars
                 ippacketsdict[fivetuple][key] = pkt
-                if configopts['verbose']:
-                    print '[DEBUG] handleip - Saved IP/TCP packet to global per-flow dict (Key: %s | Packets: %d)' % (
-                            fivetuple,
-                            len(ippacketsdict[fivetuple]) - ipmetavars)
+                pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
 
             elif revfivetuple in ippacketsdict.keys() and ippacketsdict[revfivetuple]['proto'] == 'TCP':
                 key = len(ippacketsdict[revfivetuple].keys()) - ipmetavars
                 ippacketsdict[revfivetuple][key] = pkt
-                if configopts['verbose']:
-                    print '[DEBUG] handleip - Saved IP/TCP packet to global per-flow dict (Key: %s | Packets: %d)' % (
-                            revfivetuple,
-                            len(ippacketsdict[revfivetuple]) - ipmetavars)
+                pktstats = 'pktid: %d | ' % (len(ippacketsdict[revfivetuple]) - ipmetavars)
 
             else:
                 ippacketsdict[fivetuple] = {    'proto': 'TCP',
@@ -99,10 +81,22 @@ def handleip(pkt):
                                                 'matched':False,
                                                 0: pkt
                                             }
-                if configopts['verbose']:
-                    print '[DEBUG] handleip - Saved IP/TCP packet to global per-flow dict (Key: %s | Packets: %d)' % (
-                            fivetuple,
-                            len(ippacketsdict[fivetuple]) - ipmetavars)
+                pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
+        else:
+            pktstats = ''
+
+        if configopts['verbose']:
+            print '[DEBUG] handleip - %s:%s > %s:%s TCP [ %sflags: %s | seq: %d | ack: %d | win: %d | len: %dB ]' % (
+                    ipsrc,
+                    tcpsport,
+                    ipdst,
+                    tcpdport,
+                    pktstats,
+                    tcpflagsstr,
+                    tcpseq,
+                    tcpack,
+                    tcpwindow,
+                    len(data))
 
     elif ipproto == ipprotodict['udp']:
         udphdr = unpack('!HHHH', pkt[ipihl:ipihl+UDPHDRLEN])
@@ -112,14 +106,6 @@ def handleip(pkt):
 
         data = pkt[ipihl+UDPHDRLEN:]
 
-        if configopts['verbose']:
-            print '[DEBUG] handleip - %s:%s > %s:%s UDP [ len: %dB ]' % (
-                    ipsrc,
-                    udpsport,
-                    ipdst,
-                    udpdport,
-                    len(data))
-
         if configopts['writepcap']:
             fivetuple = ((ipsrc, udpsport), (ipdst, udpdport))
             revfivetuple = ((ipdst, udpdport), (ipsrc, udpsport))
@@ -127,18 +113,12 @@ def handleip(pkt):
             if fivetuple in ippacketsdict.keys() and ippacketsdict[fivetuple]['proto'] == 'UDP':
                 key = len(ippacketsdict[fivetuple].keys()) - ipmetavars
                 ippacketsdict[fivetuple][key] = pkt
-                if configopts['verbose']:
-                    print '[DEBUG] handleip - Saved IP/UDP packet to global per-flow dict (Key: %s | Packets: %d)' % (
-                            fivetuple,
-                            len(ippacketsdict[fivetuple]) - ipmetavars)
+                pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
 
             elif revfivetuple in ippacketsdict.keys() and ippacketsdict[revfivetuple]['proto'] == 'UDP':
                 key = len(ippacketsdict[revfivetuple].keys()) - ipmetavars
                 ippacketsdict[revfivetuple][key] = pkt
-                if configopts['verbose']:
-                    print '[DEBUG] handleip - Saved IP/UDP packet to global per-flow dict (Key: %s | Packets: %d)' % (
-                            revfivetuple,
-                            len(ippacketsdict[revfivetuple]) - ipmetavars)
+                pktstats = 'pktid: %d | ' % (len(ippacketsdict[revfivetuple]) - ipmetavars)
 
             else:
                 ippacketsdict[fivetuple] = {    'proto': 'UDP',
@@ -146,10 +126,18 @@ def handleip(pkt):
                                                 'matched': False,
                                                 0: pkt
                                             }
-                if configopts['verbose']:
-                    print '[DEBUG] handleip - Saved IP/UDP packet to global per-flow dict (Key: %s | Packets: %d)' % (
-                            fivetuple,
-                            len(ippacketsdict[fivetuple]) - ipmetavars)
+                pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
+        else:
+            pktstats = ''
+
+        if configopts['verbose']:
+            print '[DEBUG] handleip - %s:%s > %s:%s UDP [ %slen: %dB ]' % (
+                    ipsrc,
+                    udpsport,
+                    ipdst,
+                    udpdport,
+                    pktstats,
+                    len(data))
 
 
 

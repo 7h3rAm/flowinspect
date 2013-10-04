@@ -121,7 +121,7 @@ def dumpippacketsdict():
             sport,
             dst,
             dport,
-            len(ippacketsdict[key].keys()) - 2,
+            len(ippacketsdict[key].keys()) - configopts['ipmetavars'],
             ippacketsdict[key]['matched'])
 
 
