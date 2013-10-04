@@ -38,6 +38,7 @@ try:
     configopts['regexengine'] = 're2'
 except ImportError, ex:
     print '[-] Import failed: %s' % ex
+    import re
     configopts['regexengine'] = 're'
 
 try:

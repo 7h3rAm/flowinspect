@@ -34,7 +34,6 @@ def exitwithstats():
         if configopts['verbose']:
             print
             dumpippacketsdict()
-        print
         writepackets()
 
     print
@@ -127,6 +126,9 @@ def dumpippacketsdict():
 
 def writepackets():
     pktlist = []
+
+    if configopts['verbose']: print
+
     for key in ippacketsdict.keys():
         if ippacketsdict[key]['matched']:
             packets = 0
