@@ -139,6 +139,8 @@ def handleudp(addr, payload, pkt):
         matchstats['directionflag'] = directionflag
         if configopts['verbose']: print '[DEBUG] handleudp - [UDP#%08d] Skipping inspection as linemode is enabled.' % (configopts['packetct'])
         showudpmatches(data[matchstats['start']:matchstats['end']])
+        if configopts['writepcap']:
+            markmatchedippackets(addrkey)
         return
 
     if configopts['maxinsppackets'] != 0 and configopts['inspudppacketct'] >= configopts['maxinsppackets']:
@@ -170,30 +172,7 @@ def handleudp(addr, payload, pkt):
     if matched:
         openudpflows[key]['matches'] += 1
 
-        if configopts['writepcap']:
-            if addrkey in ippacketsdict.keys() and ippacketsdict[addrkey]['proto'] == 'UDP':
-                ippacketsdict[addrkey]['matched'] = True
-                ippacketsdict[addrkey]['id'] = configopts['packetct']
-                if configopts['verbose']:
-                    print '[DEBUG] handletcp - [UDP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
-                            configopts['packetct'],
-                            src,
-                            sport,
-                            dst,
-                            dport)
-            else:
-                ((sip, sp), (dip, dp)) = addrkey
-                newaddrkey = ((dip, dp), (sip, sp))
-                if newaddrkey in ippacketsdict.keys() and ippacketsdict[newaddrkey]['proto'] == 'UDP':
-                    ippacketsdict[newaddrkey]['matched'] = True
-                    ippacketsdict[newaddrkey]['id'] = configopts['packetct']
-                else:
-                    print '[DEBUG] handletcp - [UDP#%08d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
-                            configopts['packetct'],
-                            src,
-                            sport,
-                            dst,
-                            dport)
+        markmatchedippackets(addrkey)
 
         matchstats['start'] += offset
         matchstats['end'] += offset
@@ -360,5 +339,34 @@ def showudpmatches(data):
             hexdump(data[:maxdispbytes], None)
 
     configopts['dispstreamct'] += 1
+
+
+def markmatchedippackets(addrkey):
+    ((src, sport), (dst, dport)) = addrkey
+
+    if addrkey in ippacketsdict.keys() and ippacketsdict[addrkey]['proto'] == 'UDP':
+        ippacketsdict[addrkey]['matched'] = True
+        ippacketsdict[addrkey]['id'] = configopts['packetct']
+        if configopts['verbose']:
+            print '[DEBUG] handletcp - [UDP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
+                            configopts['packetct'],
+                            src,
+                            sport,
+                            dst,
+                            dport)
+    else:
+        ((sip, sp), (dip, dp)) = addrkey
+        newaddrkey = ((dip, dp), (sip, sp))
+        if newaddrkey in ippacketsdict.keys() and ippacketsdict[newaddrkey]['proto'] == 'UDP':
+            ippacketsdict[newaddrkey]['matched'] = True
+            ippacketsdict[newaddrkey]['id'] = configopts['packetct']
+        else:
+            print '[DEBUG] handletcp - [UDP#%08d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
+                            configopts['packetct'],
+                            src,
+                            sport,
+                            dst,
+                            dport)
+
 
 

@@ -206,6 +206,8 @@ def handletcp(tcp):
             matchstats['directionflag'] = directionflag
             if configopts['verbose']: print '[DEBUG] handletcp - [TCP#%08d] Skipping inspection as linemode is enabled.' % (opentcpflows[addrkey]['id'])
             showtcpmatches(inspdata[matchstats['start']:matchstats['end']])
+            if configopts['writepcap']:
+                markmatchedippackets(addrkey)
             return
 
         if configopts['maxinspstreams'] != 0 and configopts['insptcppacketct'] >= configopts['maxinspstreams']:
@@ -231,30 +233,7 @@ def handletcp(tcp):
         if matched:
             if configopts['killtcp']: tcp.kill
 
-            if configopts['writepcap']:
-                if addrkey in ippacketsdict.keys() and ippacketsdict[addrkey]['proto'] == 'TCP':
-                    ippacketsdict[addrkey]['matched'] = True
-                    ippacketsdict[addrkey]['id'] = opentcpflows[addrkey]['id']
-                    if configopts['verbose']:
-                        print '[DEBUG] handletcp - [TCP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
-                            opentcpflows[addrkey]['id'],
-                            src,
-                            sport,
-                            dst,
-                            dport)
-                else:
-                    ((sip, sp), (dip, dp)) = addrkey
-                    newaddrkey = ((dip, dp), (sip, sp))
-                    if newaddrkey in ippacketsdict.keys() and ippacketsdict[newaddrkey]['proto'] == 'TCP':
-                        ippacketsdict[newaddrkey]['matched'] = True
-                        ippacketsdict[newaddrkey]['id'] = opentcpflows[addrkey]['id']
-                    else:
-                        print '[DEBUG] handletcp - [TCP#%08d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
-                                opentcpflows[addrkey]['id'],
-                                src,
-                                sport,
-                                dst,
-                                dport)
+            markmatchedippackets(addrkey)
 
             if direction == configopts['ctsdirectionstring']:
                 matchstats['direction'] = configopts['ctsdirectionstring']
@@ -522,5 +501,34 @@ def showtcpmatches(data):
             hexdump(data[:maxdispbytes], None)
 
     configopts['dispstreamct'] += 1
+
+
+def markmatchedippackets(addrkey):
+    ((src, sport), (dst, dport)) = addrkey
+
+    if addrkey in ippacketsdict.keys() and ippacketsdict[addrkey]['proto'] == 'TCP':
+            ippacketsdict[addrkey]['matched'] = True
+            ippacketsdict[addrkey]['id'] = opentcpflows[addrkey]['id']
+            if configopts['verbose']:
+                print '[DEBUG] handletcp - [TCP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
+                            opentcpflows[addrkey]['id'],
+                            src,
+                            sport,
+                            dst,
+                            dport)
+            else:
+                ((sip, sp), (dip, dp)) = addrkey
+                newaddrkey = ((dip, dp), (sip, sp))
+                if newaddrkey in ippacketsdict.keys() and ippacketsdict[newaddrkey]['proto'] == 'TCP':
+                    ippacketsdict[newaddrkey]['matched'] = True
+                    ippacketsdict[newaddrkey]['id'] = opentcpflows[addrkey]['id']
+                elif not configopts['linemode']:
+                    print '[DEBUG] handletcp - [TCP#%08d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
+                                opentcpflows[addrkey]['id'],
+                                src,
+                                sport,
+                                dst,
+                                dport)
+
 
 

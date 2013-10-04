@@ -1,5 +1,5 @@
 [ ] flowinspect - A framework for network traffic inspection
-	[ ] pcap write wont work in linemode
+	[x] pcap write wont work in linemode
 	[ ] invertmatch - NOT WORKING FOR REGEX
 	[ ] multimatch offsets are incorrect for ANY direction
 	[ ] shellcode inspection should be CTS/STC/ANY
