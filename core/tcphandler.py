@@ -441,25 +441,25 @@ def showtcpmatches(data):
             elif direction == configopts['stcdirectionstring']:
                 regexpattern = configopts['stcregexes'][matchstats['regex']]['regexpattern']
             metastr = 'matches regex: \'%s\'' % (regexpattern)
-            packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
+            packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
 
         elif matchstats['detectiontype'] == 'dfa':
             if configopts['dfapartialmatch']:
                 metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (
                     dfapartialmatches[configopts['dfapartialmatchmember']]['dfapattern'],
                     dfapartialmatches[configopts['dfapartialmatchmember']]['dfastatecount'])
-                packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
+                packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
             else:
                 metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (matchstats['dfapattern'], matchstats['dfastatecount'])
-                packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
+                packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
 
         elif matchstats['detectiontype'] == 'shellcode':
             metastr = 'contains shellcode (Offset: %d)' % (matchstats['shellcodeoffset'])
-            packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
+            packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
 
         elif matchstats['detectiontype'] == 'yara':
             metastr = 'matches rule: \'%s\' from %s' % (matchstats['yararulename'], matchstats['yararulefilepath'])
-            packetstats = '| packet[%d] - packet[%d]' % (startpacket, endpacket)
+            packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
 
         else:
             metastr = ''
@@ -490,7 +490,7 @@ def showtcpmatches(data):
                 dport,
                 metastr)
 
-        print '[MATCH] (%08d/%08d) [TCP#%08d] match @ %s[%d:%d] - %dB %s' % (
+        print '[MATCH] (%08d/%08d) [TCP#%08d] match @ %s[%d:%d] (%dB%s)' % (
                 configopts['insptcppacketct'],
                 configopts['tcpmatches'],
                 id,

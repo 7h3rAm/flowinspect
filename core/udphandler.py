@@ -329,7 +329,7 @@ def showudpmatches(data):
                 dport,
                 metastr)
 
-        print '[MATCH] (%08d/%08d) [UDP#%08d] match @ %s[%d:%d] - %dB' % (
+        print '[MATCH] (%08d/%08d) [UDP#%08d] match @ %s[%d:%d] (%dB)' % (
                 configopts['inspudppacketct'],
                 configopts['udpmatches'],
                 configopts['packetct'],
