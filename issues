@@ -1,4 +1,5 @@
 [ ] flowinspect - A framework for network traffic inspection
+	[ ] dfa graph should be generated independent of match status
 	[x] pcap write wont work in linemode
 	[ ] invertmatch - NOT WORKING FOR REGEX
 	[ ] multimatch offsets are incorrect for ANY direction
