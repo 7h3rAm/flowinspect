@@ -4,7 +4,7 @@
 import datetime, nids
 from globals import configopts, openudpflows, matchstats, ippacketsdict
 from inspector import inspect
-from utils import getregexpattern, hexdump, printable
+from utils import getregexpattern, hexdump, printable, writepackets
 
 import sys, socket
 from struct import unpack
@@ -61,10 +61,11 @@ def handleip(pkt):
         if tcpflags & 32 == 32: tcpflagsstr.append('U')
         tcpflagsstr = "".join(tcpflagsstr)
 
-        if configopts['writepcap']:
-            fivetuple = ((ipsrc, tcpsport), (ipdst, tcpdport))
-            revfivetuple = ((ipdst, tcpdport), (ipsrc, tcpsport))
+        pktstats = ''
+        fivetuple = ((ipsrc, tcpsport), (ipdst, tcpdport))
+        revfivetuple = ((ipdst, tcpdport), (ipsrc, tcpsport))
 
+        if configopts['writepcap']:
             if fivetuple in ippacketsdict.keys() and ippacketsdict[fivetuple]['proto'] == 'TCP':
                 key = len(ippacketsdict[fivetuple].keys()) - ipmetavars
                 ippacketsdict[fivetuple][key] = pkt
@@ -75,15 +76,74 @@ def handleip(pkt):
                 ippacketsdict[revfivetuple][key] = pkt
                 pktstats = 'pktid: %d | ' % (len(ippacketsdict[revfivetuple]) - ipmetavars)
 
-            else:
+            elif tcpflagsstr == 'S':
                 ippacketsdict[fivetuple] = {    'proto': 'TCP',
                                                 'id': 0,
                                                 'matched':False,
+                                                'matchedid': 0,
                                                 0: pkt
                                             }
                 pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
-        else:
-            pktstats = ''
+
+            else:
+                return
+
+        if configopts['writepcapfast']:
+            if fivetuple in ippacketsdict.keys() and ippacketsdict[fivetuple]['proto'] == 'TCP':
+                if not ippacketsdict[fivetuple]['matched']:
+                    key = len(ippacketsdict[fivetuple].keys()) - ipmetavars
+                    ippacketsdict[fivetuple][key] = pkt
+                    pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
+                else:
+                    if (len(ippacketsdict[fivetuple]) - ipmetavars) == (ippacketsdict[fivetuple]['matchedid'] + configopts['pcappacketct']):
+                        if configopts['verbose']:
+                            print '[DEBUG] iphandler - Post match packet collection complete for %s:%s - %s:%s (matchpacket: %d | postpackets: +%d)' % (
+                                    ipsrc,
+                                    tcpsport,
+                                    ipdst,
+                                    tcpdport,
+                                    ippacketsdict[fivetuple]['matchedid'],
+                                    configopts['pcappacketct'])
+
+                        writepackets()
+                    else:
+                        key = len(ippacketsdict[fivetuple].keys()) - ipmetavars
+                        ippacketsdict[fivetuple][key] = pkt
+                        pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
+
+            elif revfivetuple in ippacketsdict.keys() and ippacketsdict[revfivetuple]['proto'] == 'TCP':
+                if not ippacketsdict[revfivetuple]['matched']:
+                    key = len(ippacketsdict[revfivetuple].keys()) - ipmetavars
+                    ippacketsdict[revfivetuple][key] = pkt
+                    pktstats = 'pktid: %d | ' % (len(ippacketsdict[revfivetuple]) - ipmetavars)
+                else:
+                    if (len(ippacketsdict[revfivetuple]) - ipmetavars) == (ippacketsdict[revfivetuple]['matchedid'] + configopts['pcappacketct']):
+                        if configopts['verbose']:
+                            print '[DEBUG] iphandler - Post match packet collection complete for %s:%s - %s:%s (matchpacket: %d | postpackets: +%d)' % (
+                                    ipsrc,
+                                    tcpsport,
+                                    ipdst,
+                                    tcpdport,
+                                    ippacketsdict[revfivetuple]['matchedid'],
+                                    configopts['pcappacketct'])
+
+                        writepackets()
+                    else:
+                        key = len(ippacketsdict[revfivetuple].keys()) - ipmetavars
+                        ippacketsdict[revfivetuple][key] = pkt
+                        pktstats = 'pktid: %d | ' % (len(ippacketsdict[revfivetuple]) - ipmetavars)
+
+            elif tcpflagsstr == 'S':
+                ippacketsdict[fivetuple] = {    'proto': 'TCP',
+                                                'id': 0,
+                                                'matched':False,
+                                                'matchedid': 0,
+                                                0: pkt
+                                            }
+                pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
+
+            else:
+                return
 
         if configopts['verbose']:
             print '[DEBUG] handleip - %s:%s > %s:%s TCP [ %sflags: %s | seq: %d | ack: %d | win: %d | len: %dB ]' % (
@@ -106,10 +166,11 @@ def handleip(pkt):
 
         data = pkt[ipihl+UDPHDRLEN:]
 
-        if configopts['writepcap']:
-            fivetuple = ((ipsrc, udpsport), (ipdst, udpdport))
-            revfivetuple = ((ipdst, udpdport), (ipsrc, udpsport))
+        pktstats = ''
+        fivetuple = ((ipsrc, udpsport), (ipdst, udpdport))
+        revfivetuple = ((ipdst, udpdport), (ipsrc, udpsport))
 
+        if configopts['writepcap']:
             if fivetuple in ippacketsdict.keys() and ippacketsdict[fivetuple]['proto'] == 'UDP':
                 key = len(ippacketsdict[fivetuple].keys()) - ipmetavars
                 ippacketsdict[fivetuple][key] = pkt
@@ -123,12 +184,65 @@ def handleip(pkt):
             else:
                 ippacketsdict[fivetuple] = {    'proto': 'UDP',
                                                 'id': 0,
-                                                'matched': False,
+                                                'matched':False,
+                                                'matchedid': 0,
                                                 0: pkt
                                             }
                 pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
-        else:
-            pktstats = ''
+
+        if configopts['writepcapfast']:
+            if fivetuple in ippacketsdict.keys() and ippacketsdict[fivetuple]['proto'] == 'UDP':
+                if not ippacketsdict[fivetuple]['matched']:
+                    key = len(ippacketsdict[fivetuple].keys()) - ipmetavars
+                    ippacketsdict[fivetuple][key] = pkt
+                    pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
+                else:
+                    if (len(ippacketsdict[fivetuple]) - ipmetavars) == (ippacketsdict[fivetuple]['matchedid'] + configopts['pcappacketct']):
+                        if configopts['verbose']:
+                            print '[DEBUG] iphandler - Post match packet collection complete for %s:%s - %s:%s (matchpacket: %d | postpackets: +%d)' % (
+                                    ipsrc,
+                                    udpsport,
+                                    ipdst,
+                                    udpdport,
+                                    ippacketsdict[fivetuple]['matchedid'],
+                                    configopts['pcappacketct'])
+
+                        writepackets()
+                    else:
+                        key = len(ippacketsdict[fivetuple].keys()) - ipmetavars
+                        ippacketsdict[fivetuple][key] = pkt
+                        pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
+
+            elif revfivetuple in ippacketsdict.keys() and ippacketsdict[revfivetuple]['proto'] == 'UDP':
+                if not ippacketsdict[revfivetuple]['matched']:
+                    key = len(ippacketsdict[revfivetuple].keys()) - ipmetavars
+                    ippacketsdict[revfivetuple][key] = pkt
+                    pktstats = 'pktid: %d | ' % (len(ippacketsdict[revfivetuple]) - ipmetavars)
+                else:
+                    if (len(ippacketsdict[revfivetuple]) - ipmetavars) == (ippacketsdict[revfivetuple]['matchedid'] + configopts['pcappacketct']):
+                        if configopts['verbose']:
+                            print '[DEBUG] iphandler - Post match packet collection complete for %s:%s - %s:%s (matchpacket: %d | postpackets: +%d)' % (
+                                    ipsrc,
+                                    udpsport,
+                                    ipdst,
+                                    udpdport,
+                                    ippacketsdict[revfivetuple]['matchedid'],
+                                    configopts['pcappacketct'])
+
+                        writepackets()
+                    else:
+                        key = len(ippacketsdict[revfivetuple].keys()) - ipmetavars
+                        ippacketsdict[revfivetuple][key] = pkt
+                        pktstats = 'pktid: %d | ' % (len(ippacketsdict[revfivetuple]) - ipmetavars)
+
+            else:
+                ippacketsdict[fivetuple] = {    'proto': 'UDP',
+                                                'id': 0,
+                                                'matched':False,
+                                                'matchedid': 0,
+                                                0: pkt
+                                            }
+                pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
 
         if configopts['verbose']:
             print '[DEBUG] handleip - %s:%s > %s:%s UDP [ %slen: %dB ]' % (

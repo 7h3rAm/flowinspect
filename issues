@@ -5,7 +5,7 @@
 	[ ] multimatch offsets are incorrect for ANY direction
 	[ ] shellcode inspection should be CTS/STC/ANY
 	[ ] -y should accept path
-	[ ] -Z should accept path
+	[ ] -z and -Z should accept path
 	[ ] killtcp
 	[ ] udp session tracking needs testing
 	[x] tcp -T should operate on flows and not packets

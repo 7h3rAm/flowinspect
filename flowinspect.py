@@ -418,13 +418,29 @@ def main():
                                     action='store_true',
                                     required=False,
                                     help='enable TCP multi match mode')
-    misc_options.add_argument(
+
+    pcapwrite = parser.add_mutually_exclusive_group(required=False)
+    pcapwrite.add_argument(
+                                    '-z',
+                                    dest='writepcapfast',
+                                    default=False,
+                                    action='store_true',
+                                    help='write matching flows to pcap w/ %d post match packets' % (configopts['pcappacketct']))
+    pcapwrite.add_argument(
                                     '-Z',
                                     dest='writepcap',
                                     default=False,
                                     action='store_true',
-                                    required=False,
-                                    help='write matching flows to pcap')
+                                    help='write matching flows to pcap w/ all post match packets')
+
+    misc_options.add_argument(
+                                    '-q',
+                                    metavar='pcappacketct',
+                                    dest='pcappacketct',
+                                    default=configopts['pcappacketct'],
+                                    action='store',
+                                    help='# of post match packets to write to pcap')
+ 
     misc_options.add_argument(
                                     '-n',
                                     dest='confirm',
@@ -661,6 +677,12 @@ def main():
     if args.writepcap:
         configopts['writepcap'] = True
 
+    if args.writepcapfast:
+        configopts['writepcapfast'] = True
+
+    if int(args.pcappacketct) >= 0:
+        configopts['pcappacketct'] = int(args.pcappacketct)
+
     if args.colored:
         configopts['colored'] = True
 
@@ -678,6 +700,18 @@ def main():
             print '[DEBUG] Inspection requires one or more regex direction flags or shellcode detection enabled, none found!'
             print '[DEBUG] Fallback - linemode enabled'
             print
+
+    if configopts['writepcapfast'] and configopts['linemode']:
+        configopts['writepcapfast'] = False
+        configopts['writepcap'] = True
+        if configopts['verbose']:
+            print '[DEBUG] Fast pcap writing is incompatible with linemode. Using slow pcap writing as fallback.'
+
+    if configopts['writepcapfast'] and configopts['tcpmultimatch']:
+        configopts['writepcapfast'] = False
+        configopts['writepcap'] = True
+        if configopts['verbose']:
+            print '[DEBUG] Fast pcap writing is incompatible with multimatch. Using slow pcap writing as fallback.'
 
     if configopts['verbose']:
         dumpargsstats(configopts)

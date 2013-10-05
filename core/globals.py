@@ -72,7 +72,7 @@ configopts = {
     'insptcpstreamct': 0,
     'inspudppacketct': 0,
     'invertmatch': False,
-    'ipmetavars': 3,
+    'ipmetavars': 4,
 
     'killtcp': False,
 
@@ -94,6 +94,7 @@ configopts = {
     'outmodes': [],
 
     'packetct': 0,
+    'pcappacketct': 5,
 
     'reflags': 0,
     'regexengine': None,
@@ -124,6 +125,7 @@ configopts = {
 
     'writelogs': False,
     'writepcap': False,
+    'writepcapfast': False,
 
     'yaraengine': None
 }

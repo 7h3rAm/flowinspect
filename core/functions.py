@@ -4,14 +4,12 @@ from globals import configopts, opentcpflows, openudpflows, ippacketsdict
 from tcphandler import handletcp
 from udphandler import handleudp
 from iphandler import handleip
-from utils import printdict, pcapwriter
+from utils import printdict, writepackets
 
 import sys, re
 
 
 def validatedfaexpr(expr):
-    global configopts
-
     if re.search(r'^m[0-9][0-9]\s*=\s*', expr):
         (memberid, dfa) =  expr.split('=', 1)
         configopts['dfalist'].append(expr)
@@ -24,16 +22,15 @@ def validatedfaexpr(expr):
 
 
 def exitwithstats():
-    global configopts, openudpflows, opentcpflows
-
     if configopts['verbose'] and (len(opentcpflows) > 0 or len(openudpflows) > 0):
         print
         dumpopenstreams()
 
     if len(ippacketsdict) > 0:
         if configopts['verbose']:
-            print
             dumpippacketsdict()
+            print
+
         writepackets()
 
     print
@@ -110,6 +107,7 @@ def dumpopenstreams():
 
 
 def dumpippacketsdict():
+    print
     print '[DEBUG] Dumping IP packets dictionary: %d' % (len(ippacketsdict.keys()))
     for key in ippacketsdict.keys():
         ((src, sport), (dst, dport)) = key
@@ -122,27 +120,6 @@ def dumpippacketsdict():
             dport,
             len(ippacketsdict[key].keys()) - configopts['ipmetavars'],
             ippacketsdict[key]['matched'])
-
-
-def writepackets():
-    pktlist = []
-
-    if configopts['verbose']: print
-
-    for key in ippacketsdict.keys():
-        if ippacketsdict[key]['matched']:
-            packets = 0
-            del pktlist[:]
-            ((src, sport), (dst, dport)) = key
-            pcapfile = '%s-%08d-%s.%s-%s.%s.pcap' % (ippacketsdict[key]['proto'], ippacketsdict[key]['id'], src, sport, dst, dport)
-            for subkey in ippacketsdict[key].keys():
-                if subkey not in ['proto', 'id', 'matched']:
-                    pktlist.append(ippacketsdict[key][subkey])
-                    packets += 1
-            pcapwriter(pcapfile, pktlist)
-            if configopts['verbose']:
-                print '[DEBUG] writepackets - Wrote %d packets to %s' % (packets, pcapfile)
-            del ippacketsdict[key]
 
 
 def dumpargsstats(configopts):
@@ -231,6 +208,10 @@ def dumpargsstats(configopts):
         print '\'quite\'',
         if configopts['writelogs']:
             print '\'write: %s\'' % (configopts['logdir']),
+        if configopts['writepcap']:
+            print '\'pcap: all packets\''
+        if configopts['writepcapsfast']:
+            print '\'pcap: matched +%d packets\'' % (configopts['pcappacketct'])
     else:
         if 'meta' in configopts['outmodes']: print '\'meta\'',
         if 'hex' in configopts['outmodes']: print '\'hex\'',
@@ -238,15 +219,18 @@ def dumpargsstats(configopts):
         if 'raw' in configopts['outmodes']: print '\'raw\'',
         if 'graph' in configopts['outmodes']: print '\'graph: %s\'' % (configopts['graphdir']),
         if configopts['writelogs']: print '\'write: %s\'' % (configopts['logdir']),
+        if configopts['writepcap']: print '\'pcap: all packets\'',
+        if configopts['writepcapfast']: print '\'pcap: matched +%d packets\'' % (configopts['pcappacketct']),
     print ']'
 
     print '%-30s' % '[DEBUG] Misc options:',
-    print '[ BPF: \'%s\' | invertmatch: %s | killtcp: %s | graph: %s | verbose: %s | linemode: %s ]' % (
+    print '[ BPF: \'%s\' | invertmatch: %s | killtcp: %s | graph: %s | verbose: %s | linemode: %s | multimatch: %s ]' % (
             configopts['bpf'],
             configopts['invertmatch'],
             configopts['killtcp'],
             configopts['graph'],
             configopts['verbose'],
-            configopts['linemode'])
+            configopts['linemode'],
+            configopts['tcpmultimatch'])
     print
 

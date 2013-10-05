@@ -1,12 +1,32 @@
 # flowinspect misc. utilities
 
-from globals import configopts
+from globals import configopts, ippacketsdict
 import sys, os, pickle, collections, json, struct, binascii, random
 
 
 # when stdout has to be mute'd
 class NullDevice():
     def write(self, s): pass
+
+
+# prepare a list of packets to be written to flow-named pcap
+def writepackets():
+    pktlist = []
+
+    for key in ippacketsdict.keys():
+        if ippacketsdict[key]['matched']:
+            packets = 0
+            del pktlist[:]
+            ((src, sport), (dst, dport)) = key
+            pcapfile = '%s-%08d-%s.%s-%s.%s.pcap' % (ippacketsdict[key]['proto'], ippacketsdict[key]['id'], src, sport, dst, dport)
+            for subkey in ippacketsdict[key].keys():
+                if subkey not in ['proto', 'id', 'matched', 'matchedid']:
+                    pktlist.append(ippacketsdict[key][subkey])
+                    packets += 1
+            pcapwriter(pcapfile, pktlist)
+            if configopts['verbose']:
+                print '[DEBUG] writepackets - Wrote %d packets to %s' % (packets, pcapfile)
+            del ippacketsdict[key]
 
 
 # write some packet data to a pcap file
@@ -41,6 +61,7 @@ def pcapwriter(filename, pktlist):
 
     fo = open(filename, 'wb')
     fo.write(pcap_header)
+
     for pkt in pktlist:
         pcap_ts_usec += random.randint(1000, 3000)
         pcap_incl_len = len(pkt) + 14
