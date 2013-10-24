@@ -1,4 +1,4 @@
-# globals 
+# globals
 
 from collections import OrderedDict
 
@@ -87,7 +87,6 @@ configopts = {
     'maxinsppackets': 0,
     'maxinspstreams': 0,
     'multiline': False,
-    'multimatchskipoffset': 0,
     'name': 'flowinspect',
 
     'offset': 0,
@@ -127,6 +126,6 @@ configopts = {
     'writepcap': False,
     'writepcapfast': False,
 
-    'yaraengine': None
+    'yaraengine': None,
+    'yaracallbackretval': None
 }
-

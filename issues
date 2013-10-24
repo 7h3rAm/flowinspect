@@ -1,4 +1,7 @@
 [ ] flowinspect - A framework for network traffic inspection
+    [ ] ip flow tracking should be in sync with tcp flow tracking
+	[ ] direction identification for UDP flows
+	[ ] linemode should not honor inspection specific flags (offset, depth, ...)
 	[ ] dfa graph should be generated independent of match status
 	[x] pcap write wont work in linemode
 	[ ] invertmatch - NOT WORKING FOR REGEX
@@ -14,4 +17,3 @@
 	[x] make dfa memberids optional
 	[x] offset corrupts the packet span calculation
 	[x] span offsets don't include custom offset (2 instead of 1002)
-

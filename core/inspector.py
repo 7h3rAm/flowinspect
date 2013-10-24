@@ -14,9 +14,12 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
         import re2 as re
     else:
         import re
-    if configopts['fuzzengine']: from fuzzywuzzy import fuzz
-    if configopts['yaraengine']: import yara
-    if configopts['shellcodeengine']: import pylibemu as emu
+    if configopts['fuzzengine']:
+		from fuzzywuzzy import fuzz
+    if configopts['yaraengine']:
+		import yara
+    if configopts['shellcodeengine']:
+		import pylibemu as emu
     if configopts['dfaengine']:
         from pydfa.pydfa import Rexp
         from pydfa.graph import FA
@@ -503,8 +506,6 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
 
 def yaramatchcallback(data):
-    global matchstats
-
     matchstats['yararulenamespace'] = data['namespace']
     matchstats['yararulename'] = data['rule']
     matchstats['yararulemeta'] = data['meta']
@@ -512,7 +513,7 @@ def yaramatchcallback(data):
         matchstats['start'] = start
         matchstats['end'] = start + len(matchstr)
 
-    yara.CALLBACK_ABORT
+    configopts['yaracallbackretval']
 
 
 def graphdfatransitions(graphtitle, filename, dfaobject):
@@ -538,4 +539,3 @@ def graphdfatransitions(graphtitle, filename, dfaobject):
                     os.remove(os.path.join(configopts['graphdir'], graphfilename))
 
             shutil.move(graphfilename, configopts['graphdir'])
-

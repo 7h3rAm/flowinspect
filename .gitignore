@@ -1,5 +1,6 @@
 *~
 *.swp
+*.cap
 *.pcap
 *.py[cod]
 *tcp
@@ -8,4 +9,4 @@
 TCP-*
 UDP-*
 install
-
+testfiles/*

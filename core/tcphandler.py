@@ -59,6 +59,7 @@ def handletcp(tcp):
                                             'id': configopts['streamct'],
                                             'totdatasize': 0,
                                             'insppackets': 0,
+                                            'multimatchskipoffset': 0,
                                             'ctspacketlendict': {},
                                             'stcpacketlendict': {},
                                             'ctsmatcheddfastats': {},
@@ -129,7 +130,7 @@ def handletcp(tcp):
             else:
                 depth = count
 
-            offset += configopts['multimatchskipoffset']
+            offset += opentcpflows[addrkey]['multimatchskipoffset']
             configopts['inspoffset'] = offset
 
             inspdata = tcp.server.data[offset:depth]
@@ -161,7 +162,7 @@ def handletcp(tcp):
             else:
                 offset = 0
 
-            offset += configopts['multimatchskipoffset']
+            offset += opentcpflows[addrkey]['multimatchskipoffset']
             configopts['inspoffset'] = offset
 
             if configopts['depth'] > 0 and configopts['depth'] < (count - offset):
@@ -293,12 +294,12 @@ def handletcp(tcp):
                 elif direction == configopts['stcdirectionstring']:
                     opentcpflows[addrkey]['stcpacketlendict'].clear()
 
-                configopts['multimatchskipoffset'] += matchstats['end']
+                opentcpflows[addrkey]['multimatchskipoffset'] += matchstats['end']
 
                 if configopts['verbose']:
                     print '[DEBUG] handletcp - [TCP#%08d] Marked %dB to be skipped for further %s inspection' % (
                             opentcpflows[addrkey]['id'],
-                            configopts['multimatchskipoffset'],
+                            opentcpflows[addrkey]['multimatchskipoffset'],
                             direction)
 
         else:
@@ -420,8 +421,7 @@ def showtcpmatches(data):
             matchsize = matchstats['matchsize']
 
         for (pktid, pktlen) in collections.OrderedDict(sorted(packetlendict.items())).items():
-
-            if startpacket == 0 and (matchstats['start'] + configopts['inspoffset']) <= pktlen:
+            if startpacket == 0 and (matchstats['start'] + configopts['inspoffset']) < pktlen:
                 startpacket = pktid
             endpacket = pktid
 
@@ -532,7 +532,7 @@ def markmatchedippackets(addrkey):
                     sport,
                     dst,
                     dport)
-    
+
     elif newaddrkey in ippacketsdict.keys() and ippacketsdict[newaddrkey]['proto'] == 'TCP':
         ippacketsdict[newaddrkey]['matched'] = True
         ippacketsdict[newaddrkey]['id'] = opentcpflows[addrkey]['id']

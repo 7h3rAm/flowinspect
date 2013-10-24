@@ -149,7 +149,7 @@ def dumpargsstats(configopts):
             print '\'%s\'' % configopts['stcregexes'][s]['regexpattern'],
         print ']'
 
-        print '%-30s' % '[DEBUG] RE stats:', ; print '[ Flags: %d - (' % (configopts['reflags']),
+        print '%-30s' % '[DEBUG] RE stats:', ; print '[ Flags: %d (' % (configopts['reflags']),
         if configopts['igncase']: print 'ignorecase',
         if configopts['multiline']: print 'multiline',
         print ') ]'
@@ -210,7 +210,7 @@ def dumpargsstats(configopts):
             print '\'write: %s\'' % (configopts['logdir']),
         if configopts['writepcap']:
             print '\'pcap: all packets\''
-        if configopts['writepcapsfast']:
+        if configopts['writepcapfast']:
             print '\'pcap: matched +%d packets\'' % (configopts['pcappacketct'])
     else:
         if 'meta' in configopts['outmodes']: print '\'meta\'',

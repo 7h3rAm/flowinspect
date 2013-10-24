@@ -29,9 +29,8 @@
 	[ ] boolean parser for all modes
 	[ ] combination of inspection modes
 	[ ] write matching flows to pcap
-		[ ] write all packets in a matched flow (ones coming after match as well)
-			[ ] wrting should be done when a flow closes or before exiting
-		[ ] write packets seen only untill the match happened
+		[x] write all packets in a matched flow (ones coming after match as well)
+		[x] write packets seen only untill the match happened (+a few more)
 	[x] udp stream tracking (cts/stc/any)
 	[x] show matching tcp packet ids (handy when pattern spans many packets)
 	[x] ip/tcp/udp header checks - via BPF

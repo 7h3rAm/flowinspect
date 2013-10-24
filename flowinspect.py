@@ -9,7 +9,7 @@ __status__  = 'Development'
 
 import os, sys, shutil, argparse
 
-# adding custom modules path to system search paths list 
+# adding custom modules path to system search paths list
 # for Python to be able to import flowinspect's core modules
 # inspired ffrom Chopshop: https://github.com/MITRECND/chopshop/blob/master/chopshop
 # and this SO answer: http://stackoverflow.com/questions/4383571/importing-files-from-different-folder-in-python
@@ -23,7 +23,8 @@ from udphandler import handleudp
 from iphandler import handleip
 from utils import NullDevice
 
-sys.stdout = NullDevice()
+sys.dont_write_bytecode = True
+
 
 try:
     import nids
@@ -32,45 +33,6 @@ except ImportError, ex:
     print '[-] Cannot proceed. Exiting.'
     print
     sys.exit(1)
-
-try:
-    import re2 as re
-    configopts['regexengine'] = 're2'
-except ImportError, ex:
-    print '[-] Import failed: %s' % ex
-    import re
-    configopts['regexengine'] = 're'
-
-try:
-    from pydfa.pydfa import Rexp
-    from pydfa.graph import FA
-    configopts['dfaengine'] = 'pydfa'
-except ImportError, ex:
-    print '[!] Import failed: %s' % (ex)
-    configopts['dfaengine'] = None
-
-try:
-    import pylibemu as emu
-    configopts['shellcodeengine'] = 'pylibemu'
-except ImportError, ex:
-    print '[!] Import failed: %s' % (ex)
-    configopts['shellcodeengine'] = None
-
-try:
-    import yara
-    configopts['yaraengine'] = 'pyyara'
-except ImportError, ex:
-    print '[!] Import failed: %s' % (ex)
-    configopts['yaraengine'] = None
-
-try:
-    from fuzzywuzzy import fuzz
-    configopts['fuzzengine'] = 'fuzzywuzzy'
-except ImportError, ex:
-    print '[!] Import failed: %s' % (ex)
-    configopts['fuzzengine'] = None
-
-sys.dont_write_bytecode = True
 
 
 def main():
@@ -88,6 +50,19 @@ def main():
     print '%s v%s - %s' % (configopts['name'], configopts['version'], configopts['desc'])
     print '%s' % configopts['author']
     print
+
+#    sys.stdout = NullDevice()
+
+#    try:
+#        import re2 as re
+#        configopts['regexengine'] = 're2'
+#    except ImportError, ex:
+#        print '[-] Import failed: %s' % ex
+#        import re
+#        configopts['regexengine'] = 're'
+
+    import re
+    configopts['regexengine'] = 're'
 
     parser = argparse.ArgumentParser()
 
@@ -440,7 +415,7 @@ def main():
                                     default=configopts['pcappacketct'],
                                     action='store',
                                     help='# of post match packets to write to pcap')
- 
+
     misc_options.add_argument(
                                     '-n',
                                     dest='confirm',
@@ -458,7 +433,6 @@ def main():
 
     args = parser.parse_args()
 
-    sys.stdout = NullDevice()
     if args.pcap:
         configopts['pcap'] = args.pcap
         nids.param('filename', configopts['pcap'])
@@ -483,6 +457,9 @@ def main():
     if args.boolop:
         configopts['useoroperator'] = True
 
+    if args.tcpmultimatch:
+        configopts['tcpmultimatch'] = True
+
     if configopts['regexengine']:
         if args.cres:
             if 'regex' not in configopts['inspectionmodes']:
@@ -503,6 +480,14 @@ def main():
                 configopts['ctsregexes'][re.compile(a, configopts['reflags'])] = { 'regexpattern': a }
                 configopts['stcregexes'][re.compile(a, configopts['reflags'])] = { 'regexpattern': a }
 
+    if args.cfuzz or args.sfuzz or args.afuzz:
+        try:
+            from fuzzywuzzy import fuzz
+            configopts['fuzzengine'] = 'fuzzywuzzy'
+        except ImportError, ex:
+            print '[!] Import failed: %s' % (ex)
+            configopts['fuzzengine'] = None
+
     if configopts['fuzzengine']:
         if args.cfuzz:
             if 'fuzzy' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('fuzzy')
@@ -520,8 +505,20 @@ def main():
                 configopts['ctsfuzzpatterns'].append(a)
                 configopts['stcfuzzpatterns'].append(a)
 
+    if args.fuzzminthreshold >= 1 and args.fuzzminthreshold <= 100:
+        configopts['fuzzminthreshold'] = args.fuzzminthreshold
+
+    if args.cdfas or args.sdfas or args.adfas:
+        try:
+            from pydfa.pydfa import Rexp
+            from pydfa.graph import FA
+            configopts['dfaengine'] = 'pydfa'
+        except ImportError, ex:
+            print '[!] Import failed: %s' % (ex)
+            configopts['dfaengine'] = None
+
     if configopts['dfaengine']:
-        if args.cdfas:
+        if args.sdfas:
             if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
             for c in args.cdfas:
                 (memberid, dfa) = validatedfaexpr(c)
@@ -588,7 +585,17 @@ def main():
                 del memberids[-1]
                 configopts['dfaexpression'] = ' '.join(memberids)
 
+    if args.cyararules or args.syararules or args.ayararules:
+        try:
+            import yara
+            configopts['yaraengine'] = 'pyyara'
+        except ImportError, ex:
+            print '[!] Import failed: %s' % (ex)
+            configopts['yaraengine'] = None
+
     if configopts['yaraengine']:
+        configopts['yaracallbackretval'] = yara.CALLBACK_ABORT
+
         if args.cyararules:
             if 'yara' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('yara')
             for c in args.cyararules:
@@ -605,9 +612,6 @@ def main():
                 if os.path.isfile(a):
                     configopts['ctsyararules'][yara.compile(a)] = { 'filepath': a }
                     configopts['stcyararules'][yara.compile(a)] = { 'filepath': a }
-
-    if args.fuzzminthreshold >= 1 and args.fuzzminthreshold <= 100:
-        configopts['fuzzminthreshold'] = args.fuzzminthreshold
 
     if args.offset:
         configopts['offset'] = int(args.offset)
@@ -655,8 +659,16 @@ def main():
         else:
             configopts['graphdir'] = '.'
 
-    if args.shellcode:
-        configopts['inspectionmodes'].append('shellcode')
+    try:
+        import pylibemu as emu
+        configopts['shellcodeengine'] = 'pylibemu'
+    except ImportError, ex:
+        print '[!] Import failed: %s' % (ex)
+        configopts['shellcodeengine'] = None
+
+    if configopts['shellcodeengine']:
+        if args.shellcode:
+            configopts['inspectionmodes'].append('shellcode')
 
     if args.emuprofile:
         configopts['emuprofile'] = True
@@ -670,9 +682,6 @@ def main():
 
     if args.killtcp:
         if configopts['livemode']: configopts['killtcp'] = True
-
-    if args.tcpmultimatch:
-        configopts['tcpmultimatch'] = True
 
     if args.writepcap:
         configopts['writepcap'] = True
@@ -697,7 +706,7 @@ def main():
     if not configopts['inspectionmodes'] and not configopts['linemode']:
         configopts['linemode'] = True
         if configopts['verbose']:
-            print '[DEBUG] Inspection requires one or more regex direction flags or shellcode detection enabled, none found!'
+            print '[DEBUG] Inspection disabled as no mode selected/available'
             print '[DEBUG] Fallback - linemode enabled'
             print
 
@@ -712,6 +721,14 @@ def main():
         configopts['writepcap'] = True
         if configopts['verbose']:
             print '[DEBUG] Fast pcap writing is incompatible with multimatch. Using slow pcap writing as fallback.'
+
+    if configopts['linemode']:
+        configopts['depth'] = 0
+        del configopts['inspectionmodes'][:]
+        configopts['invertmatch'] = False
+        configopts['killtcp'] = False
+        configopts['livemode'] = False
+        configopts['offset'] = 0
 
     if configopts['verbose']:
         dumpargsstats(configopts)
@@ -751,4 +768,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

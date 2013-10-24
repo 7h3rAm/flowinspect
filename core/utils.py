@@ -105,7 +105,7 @@ def getregexpattern(regexobj):
     dumps = pickle.dumps(regexobj)
     regexpattern = re.search("\n\(S'(.*)'\n", dumps).group(1)
     if re.findall(r'\\x[0-9a-f]{2}', regexpattern):
-        regexpattern = re2.sub(r'(\\x)([0-9a-f]{2})', r'x\2', regexpattern)
+        regexpattern = re.sub(r'(\\x)([0-9a-f]{2})', r'x\2', regexpattern)
 
     return regexpattern
 
