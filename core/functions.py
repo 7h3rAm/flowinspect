@@ -22,15 +22,15 @@ def validatedfaexpr(expr):
 
 
 def exitwithstats():
-    if configopts['verbose'] and (len(opentcpflows) > 0 or len(openudpflows) > 0):
-        print
-        dumpopenstreams()
+    if len(opentcpflows) > 0 or len(openudpflows) > 0:
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
+            print
+            dumpopenstreams()
 
     if len(ippacketsdict) > 0:
-        if configopts['verbose']:
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
             dumpippacketsdict()
             print
-
         writepackets()
 
     print
@@ -224,13 +224,13 @@ def dumpargsstats(configopts):
     print ']'
 
     print '%-30s' % '[DEBUG] Misc options:',
-    print '[ BPF: %s | invertmatch: %s | killtcp: %s | graph: %s | verbose: %s | linemode: %s | multimatch: %s ]' % (
+    print '[ BPF: %s | invertmatch: %s | killtcp: %s | graph: %s | verbose: %s (%d) | linemode: %s | multimatch: %s ]' % (
             configopts['bpf'],
             configopts['invertmatch'],
             configopts['killtcp'],
             configopts['graph'],
             configopts['verbose'],
+            configopts['verboselevel'],
             configopts['linemode'],
             configopts['tcpmultimatch'])
     print
-

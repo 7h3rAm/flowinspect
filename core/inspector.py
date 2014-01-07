@@ -15,11 +15,11 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
     else:
         import re
     if configopts['fuzzengine']:
-		from fuzzywuzzy import fuzz
+        from fuzzywuzzy import fuzz
     if configopts['yaraengine']:
-		import yara
+        import yara
     if configopts['shellcodeengine']:
-		import pylibemu as emu
+        import pylibemu as emu
     if configopts['dfaengine']:
         from pydfa.pydfa import Rexp
         from pydfa.graph import FA
@@ -44,7 +44,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 id = openudpflows[key]['id']
                 addrkey = dkey
 
-    if configopts['verbose']:
+    if configopts['verbose'] and configopts['verboselevel'] >= 2:
         print '[DEBUG] inspect - [%s#%08d] Received %dB for inspection from %s:%s %s %s:%s' % (
                 proto,
                 id,
@@ -70,7 +70,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 matchstats['start'] = matchstats['match'].start()
                 matchstats['end'] = matchstats['match'].end()
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
-                if configopts['verbose']:
+                if configopts['verbose'] and configopts['verboselevel'] >= 2:
                     print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s matches regex: \'%s\'' % (
                             proto,
                             id,
@@ -91,7 +91,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                     matchstats['matchsize'] = matchstats['end'] - matchstats['start']
                     return True
 
-            if configopts['verbose']:
+            if configopts['verbose'] and configopts['verboselevel'] >= 2:
                 print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s did not match regex: \'%s\'' % (
                         proto,
                         id,
@@ -125,7 +125,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                     matchstr = 'doesnot match'
                     matchreason = '<'
 
-            if configopts['verbose']:
+            if configopts['verbose'] and configopts['verboselevel'] >= 2:
                 print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s %s \'%s\' (ratio: %d %s threshold: %d)' % (
                         proto,
                         id,
@@ -183,7 +183,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                         memberid = openudpflows[addrkey]['stcmatcheddfastats'][dfaobject]['memberid']
 
             if skip:
-                if configopts['verbose']:
+                if configopts['verbose'] and configopts['verboselevel'] >= 2:
                     print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s already matched %s' % (
                             proto,
                             id,
@@ -258,7 +258,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                                                                             })
 
 
-                if configopts['verbose']:
+                if configopts['verbose'] and configopts['verboselevel'] >= 2:
                     print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s matches %s: \'%s\'' % (
                             proto,
                             id,
@@ -329,7 +329,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
                 configopts['dfafinalmatch'] = eval(evalboolean)
 
-                if configopts['verbose']:
+                if configopts['verbose'] and configopts['verboselevel'] >= 2:
                     print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s (\'%s\' ==> \'%s\' ==> \'%s\')' % (
                             proto,
                             id,
@@ -402,14 +402,14 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
                     return configopts['dfafinalmatch']
 
-            elif configopts['verbose']:
+            elif configopts['verbose'] and configopts['verboselevel'] >= 2:
                 finalmatch = False
                 print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s did not match %s: \'%s\'' % (
                         proto,
                         id,
                         src,
                         sport,
-                directionflag,
+                        directionflag,
                         dst,
                         dport,
                         memberid,
@@ -428,7 +428,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
             matchstats['start'] = offset
             matchstats['end'] = datalen
             matchstats['matchsize'] = matchstats['end'] - matchstats['start']
-            if configopts['verbose']:
+            if configopts['verbose'] and configopts['verboselevel'] >= 2:
                 print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s contains shellcode' % (
                         proto,
                         id,
@@ -450,18 +450,19 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
                 data = emulator.emu_profile_output.decode('utf8')
 
-                if emulator.emu_profile_truncated and configopts['verbose']:
+                if emulator.emu_profile_truncated and configopts['verbose'] and configopts['verboselevel'] >= 2:
                     print '[DEBUG] inspect - [%s#%08d] Skipping emulator profile output generation as its truncated' % (proto, id)
                 else:
                     fo = open(filename, 'w')
                     fo.write(data)
                     fo.close()
-                    if configopts['verbose']:
+                    if configopts['verbose'] and configopts['verboselevel'] >= 2:
                         print '[DEBUG] inspect - [%s#%08d] Wrote %d byte emulator profile output to %s' % (proto, id, len(data), filename)
 
             return True
 
-        elif configopts['verbose']: print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s doesnot contain shellcode' % (
+        elif configopts['verbose'] and configopts['verboselevel'] >= 2:
+            print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s doesnot contain shellcode' % (
                             proto,
                             id,
                             src,

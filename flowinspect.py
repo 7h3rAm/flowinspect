@@ -358,8 +358,8 @@ def main():
     misc_options.add_argument(
                                     '-V',
                                     dest='verbose',
-                                    default=False,
-                                    action='store_true',
+                                    default=0,
+                                    action='count',
                                     required=False,
                                     help='verbose output')
     misc_options.add_argument(
@@ -476,7 +476,6 @@ def main():
             from fuzzywuzzy import fuzz
             configopts['fuzzengine'] = 'fuzzywuzzy'
         except ImportError, ex:
-            print '[!] Import failed: %s' % (ex)
             configopts['fuzzengine'] = None
 
     if configopts['fuzzengine']:
@@ -505,7 +504,6 @@ def main():
             from pydfa.graph import FA
             configopts['dfaengine'] = 'pydfa'
         except ImportError, ex:
-            print '[!] Import failed: %s' % (ex)
             configopts['dfaengine'] = None
 
     if configopts['dfaengine']:
@@ -581,7 +579,6 @@ def main():
             import yara
             configopts['yaraengine'] = 'pyyara'
         except ImportError, ex:
-            print '[!] Import failed: %s' % (ex)
             configopts['yaraengine'] = None
 
     if configopts['yaraengine']:
@@ -654,7 +651,6 @@ def main():
         import pylibemu as emu
         configopts['shellcodeengine'] = 'pylibemu'
     except ImportError, ex:
-        print '[!] Import failed: %s' % (ex)
         configopts['shellcodeengine'] = None
 
     if configopts['shellcodeengine']:
@@ -693,6 +689,9 @@ def main():
 
     if args.verbose:
         configopts['verbose'] = True
+        configopts['verboselevel'] = args.verbose
+        if configopts['verboselevel'] > 4:
+            configopts['verboselevel'] = 4
 
     if args.linemode:
         configopts['linemode'] = True
@@ -701,7 +700,7 @@ def main():
 
     if not configopts['inspectionmodes'] and not configopts['linemode']:
         configopts['linemode'] = True
-        if configopts['verbose']:
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
             print '[DEBUG] Inspection disabled as no mode selected/available'
             print '[DEBUG] Fallback - linemode enabled'
             print
@@ -709,13 +708,13 @@ def main():
     if configopts['writepcapfast'] and configopts['linemode']:
         configopts['writepcapfast'] = False
         configopts['writepcap'] = True
-        if configopts['verbose']:
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
             print '[DEBUG] Fast pcap writing is incompatible with linemode. Using slow pcap writing as fallback.'
 
     if configopts['writepcapfast'] and configopts['tcpmultimatch']:
         configopts['writepcapfast'] = False
         configopts['writepcap'] = True
-        if configopts['verbose']:
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
             print '[DEBUG] Fast pcap writing is incompatible with multimatch. Using slow pcap writing as fallback.'
 
     if configopts['linemode']:
@@ -726,7 +725,7 @@ def main():
         configopts['killtcp'] = False
         configopts['livemode'] = False
 
-    if configopts['verbose']:
+    if configopts['verbose'] and configopts['verboselevel'] >= 1:
         dumpargsstats(configopts)
 
     try:
@@ -754,11 +753,11 @@ def main():
         print '[-] NIDS error: %s' % nx
         print
         sys.exit(1)
-#    except Exception, ex:
-#        print
-#        print '[-] Exception: %s' % ex
-#        print
-#        sys.exit(1)
+    except Exception, ex:
+        print
+        print '[-] Exception: %s' % ex
+        print
+        sys.exit(1)
 
     exitwithstats()
 

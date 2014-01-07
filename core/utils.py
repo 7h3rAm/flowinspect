@@ -24,7 +24,7 @@ def writepackets():
                     pktlist.append(ippacketsdict[key][subkey])
                     packets += 1
             pcapwriter(pcapfile, pktlist)
-            if configopts['verbose']:
+            if configopts['verbose'] and configopts['verboselevel'] >= 1:
                 print '[DEBUG] writepackets - Wrote %d packets to %s' % (packets, pcapfile)
             del ippacketsdict[key]
 
@@ -97,9 +97,7 @@ def printdict(dictdata):
 
 # get regex pattern from compiled object
 def getregexpattern(regexobj):
-    if configopts['regexengine'] == 're2':
-        import re2
-    else:
+    if configopts['regexengine'] == 're':
         import re
 
     dumps = pickle.dumps(regexobj)
@@ -162,5 +160,3 @@ def printable(data, color):
                         or ord(ch) == 10
                         or ord(ch) == 13
                         or ord(ch) == 32])
-
-

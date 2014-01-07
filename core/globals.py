@@ -9,25 +9,25 @@ openudpflows = {}
 opentcpflows = {}
 
 matchstats = {
-	'addr':None,
+    'addr':None,
 
-	'regex':None,
+    'regex':None,
 
-	'dfaobject':None,
-	'dfapattern':None,
-	'dfastatecount':0,
-	'dfaexpression':None,
+    'dfaobject':None,
+    'dfapattern':None,
+    'dfastatecount':0,
+    'dfaexpression':None,
 
-	'start':0,
-	'end':0,
-	'matchsize':0,
+    'start':0,
+    'end':0,
+    'matchsize':0,
 
-	'direction':None,
-	'directionflag':None,
+    'direction':None,
+    'directionflag':None,
 
-	'detectiontype':None,
+    'detectiontype':None,
 
-	'shellcodeoffset':0
+    'shellcodeoffset':0
 }
 
 configopts = {
@@ -120,6 +120,7 @@ configopts = {
     'useoroperator': False,
 
     'verbose': None,
+    'verboselevel': 0,
     'version': 0.2,
 
     'writelogs': False,
