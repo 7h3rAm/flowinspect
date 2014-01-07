@@ -1,38 +1,38 @@
 [ ] flowinspect - A framework for network traffic inspection
-	[x] network/pcap based flow extraction (pynids)
-	[x] tcp.kill
-	[x] invert match
-	[ ] prefer re2 over re
-	[x] ignore 0 byte matches
-	[x] disable inspection - linemode
-	[x] support for multiple patterns
-	[x] write/append matched packets/streams to a file
-	[x] add snort-like content modifiers (offset-depth)
-	[x] support for different cts, stc and any patterns
-	[x] out modes: quite, meta, hex, ascii, raw (+write)
-	[x] stats (longest/shortest match and packet/stream #)
-	[x] stop tracking a stream when a match is found (tcp.collect = 0)
-	[x] cli to switch the first-match behavior
+    [x] network/pcap based flow extraction (pynids)
+    [x] tcp.kill
+    [x] invert match
+    [ ] prefer re2 over re
+    [x] ignore 0 byte matches
+    [x] disable inspection - linemode
+    [x] support for multiple patterns
+    [x] write/append matched packets/streams to a file
+    [x] add snort-like content modifiers (offset-depth)
+    [x] support for different cts, stc and any patterns
+    [x] out modes: quite, meta, hex, ascii, raw (+write)
+    [x] stats (longest/shortest match and packet/stream #)
+    [x] stop tracking a stream when a match is found (tcp.collect = 0)
+    [x] cli to switch the first-match behavior
   [ ] shellcode inspection should be CTS/STC/ANY
-	[x] inspection modes:
-		[x] regex
-		[x] dfa
-			[x] pydfa
-			[x] dfa state machine graph
-			[x] boolean expression parser
-		[x] pylibemu
-			[x] libemu profile output
-			[x] libemu memory size cli
-		[x] pyyara (peid/clamav)
-		[x] fuzzy match (fuzzywuzzy)
-	[ ] boolean parser for all modes
-	[ ] combination of inspection modes
-	[x] write matching flows to pcap
-		[x] write all packets in a matched flow (ones coming after match as well)
-		[x] write packets seen only untill the match happened (+a few more)
-	[x] udp stream tracking (cts/stc/any)
-	[x] show matching tcp packet ids (handy when pattern spans many packets)
-	[x] ip/tcp/udp header checks - via BPF
-	[x] use colors if term supports
-	[ ] sequence diagram for matched streams (nodes, data flow, packet ids, streamids, data size, ...)
-	[ ] verbose should be incremental
+    [x] inspection modes:
+        [x] regex
+        [x] dfa
+            [x] pydfa
+            [x] dfa state machine graph
+            [x] boolean expression parser
+        [x] pylibemu
+            [x] libemu profile output
+            [x] libemu memory size cli
+        [x] pyyara (peid/clamav)
+        [x] fuzzy match (fuzzywuzzy)
+    [ ] boolean parser for all modes
+    [ ] combination of inspection modes
+    [x] write matching flows to pcap
+        [x] write all packets in a matched flow (ones coming after match as well)
+        [x] write packets seen only untill the match happened (+a few more)
+    [x] udp stream tracking (cts/stc/any)
+    [x] show matching tcp packet ids (handy when pattern spans many packets)
+    [x] ip/tcp/udp header checks - via BPF
+    [x] use colors if term supports
+    [ ] sequence diagram for matched streams (nodes, data flow, packet ids, streamids, data size, ...)
+    [x] verbose should be incremental
