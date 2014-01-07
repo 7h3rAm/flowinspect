@@ -13,10 +13,9 @@
 	[x] stats (longest/shortest match and packet/stream #)
 	[x] stop tracking a stream when a match is found (tcp.collect = 0)
 	[x] cli to switch the first-match behavior
-	[ ] inspection modes:
-		[ ] regex
-			[x] re
-			[ ] re2
+  [ ] shellcode inspection should be CTS/STC/ANY
+	[x] inspection modes:
+		[x] regex
 		[x] dfa
 			[x] pydfa
 			[x] dfa state machine graph
@@ -28,7 +27,7 @@
 		[x] fuzzy match (fuzzywuzzy)
 	[ ] boolean parser for all modes
 	[ ] combination of inspection modes
-	[ ] write matching flows to pcap
+	[x] write matching flows to pcap
 		[x] write all packets in a matched flow (ones coming after match as well)
 		[x] write packets seen only untill the match happened (+a few more)
 	[x] udp stream tracking (cts/stc/any)
@@ -36,4 +35,4 @@
 	[x] ip/tcp/udp header checks - via BPF
 	[x] use colors if term supports
 	[ ] sequence diagram for matched streams (nodes, data flow, packet ids, streamids, data size, ...)
-
+	[ ] verbose should be incremental

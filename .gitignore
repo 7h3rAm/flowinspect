@@ -10,3 +10,5 @@ TCP-*
 UDP-*
 install
 testfiles/*
+paper/*
+

@@ -52,7 +52,7 @@ def exitwithstats():
                 configopts['longestmatch']['stream'],
                 configopts['longestmatch']['streamid'])
 
-    print '[+] Flowsrch session complete. Exiting.'
+    print '[+] Session inspection complete. Exiting.'
 
     if configopts['udpmatches'] > 0 or configopts['tcpmatches'] > 0: sys.exit(0)
     else: sys.exit(1)
@@ -123,30 +123,30 @@ def dumpippacketsdict():
 
 
 def dumpargsstats(configopts):
-    print '%-30s' % '[DEBUG] Input pcap:', ; print '[ \'%s\' ]' % (configopts['pcap'])
-    print '%-30s' % '[DEBUG] Listening device:', ;print '[ \'%s\' ]' % (configopts['device']),
+    print '%-30s' % '[DEBUG] Input pcap:', ; print '[ %s ]' % (configopts['pcap'])
+    print '%-30s' % '[DEBUG] Listening device:', ;print '[ %s ]' % (configopts['device']),
     if configopts['killtcp']:
-        print '[ w/ \'killtcp\' ]'
+        print '[ w/ killtcp ]'
     else:
         print
 
     print '%-30s' % '[DEBUG] Inspection Modes:', ;print '[',
     for mode in configopts['inspectionmodes']:
-        if mode == 'regex': print '\'regex (%s)\'' % (configopts['regexengine']),
-        if mode == 'fuzzy': print '\'fuzzy (%s)\'' % (configopts['fuzzengine']),
-        if mode == 'dfa': print '\'dfa (%s)\'' % (configopts['dfaengine']),
-        if mode == 'shellcode': print '\'shellcode (%s)\' | memory: %dK' % (configopts['shellcodeengine'], configopts['emuprofileoutsize']),
+        if mode == 'regex': print 'regex (%s)' % (configopts['regexengine']),
+        if mode == 'fuzzy': print 'fuzzy (%s)' % (configopts['fuzzengine']),
+        if mode == 'dfa': print 'dfa (%s)' % (configopts['dfaengine']),
+        if mode == 'shellcode': print 'shellcode (%s) | memory: %dK' % (configopts['shellcodeengine'], configopts['emuprofileoutsize']),
     print ']'
 
     if 'regex' in configopts['inspectionmodes']:
         print '%-30s' % '[DEBUG] CTS regex:', ; print '[ %d |' % (len(configopts['ctsregexes'])),
         for c in configopts['ctsregexes']:
-            print '\'%s\'' % configopts['ctsregexes'][c]['regexpattern'],
+            print '%s' % configopts['ctsregexes'][c]['regexpattern'],
         print ']'
 
         print '%-30s' % '[DEBUG] STC regex:', ; print '[ %d |' % (len(configopts['stcregexes'])),
         for s in configopts['stcregexes']:
-            print '\'%s\'' % configopts['stcregexes'][s]['regexpattern'],
+            print '%s' % configopts['stcregexes'][s]['regexpattern'],
         print ']'
 
         print '%-30s' % '[DEBUG] RE stats:', ; print '[ Flags: %d (' % (configopts['reflags']),
@@ -157,37 +157,37 @@ def dumpargsstats(configopts):
     if 'fuzzy' in configopts['inspectionmodes']:
         print '%-30s' % '[DEBUG] CTS fuzz patterns:', ; print '[ %d |' % (len(configopts['ctsfuzzpatterns'])),
         for c in configopts['ctsfuzzpatterns']:
-            print '\'%s\'' % (c),
+            print '%s' % (c),
         print ']'
 
         print '%-30s' % '[DEBUG] STC fuzz patterns:', ; print '[ %d |' % (len(configopts['stcfuzzpatterns'])),
         for s in configopts['stcfuzzpatterns']:
-            print '\'%s\'' % (s),
+            print '%s' % (s),
         print ']'
 
     if 'dfa' in configopts['inspectionmodes']:
         print '%-30s' % '[DEBUG] CTS dfa:', ; print '[ %d |' % (len(configopts['ctsdfas'])),
         for c in configopts['ctsdfas']:
-            print '\'%s: %s\'' % (configopts['ctsdfas'][c]['memberid'], configopts['ctsdfas'][c]['dfapattern']),
+            print '%s: %s' % (configopts['ctsdfas'][c]['memberid'], configopts['ctsdfas'][c]['dfapattern']),
         print ']'
 
         print '%-30s' % '[DEBUG] STC dfa:', ; print '[ %d |' % (len(configopts['stcdfas'])),
         for s in configopts['stcdfas']:
-            print '\'%s: %s\'' % (configopts['stcdfas'][s]['memberid'], configopts['stcdfas'][s]['dfapattern']),
+            print '%s: %s' % (configopts['stcdfas'][s]['memberid'], configopts['stcdfas'][s]['dfapattern']),
         print ']'
 
         print '%-30s' % '[DEBUG] DFA expression:',
-        print '[ \'%s\' ]' % (configopts['dfaexpression'])
+        print '[ %s ]' % (configopts['dfaexpression'])
 
     if 'yara' in configopts['inspectionmodes']:
         print '%-30s' % '[DEBUG] CTS yara rules:', ; print '[ %d |' % (len(configopts['ctsyararules'])),
         for c in configopts['ctsyararules']:
-            print '\'%s\'' % (c),
+            print '%s' % (c),
         print ']'
 
         print '%-30s' % '[DEBUG] STC yara rules:', ; print '[ %d |' % (len(configopts['stcyararules'])),
         for s in configopts['stcyararules']:
-            print '\'%s\'' % (s),
+            print '%s' % (s),
         print ']'
 
     print '%-30s' % '[DEBUG] Inspection limits:',
@@ -205,26 +205,26 @@ def dumpargsstats(configopts):
 
     print '%-30s' % '[DEBUG] Output modes:', ; print '[',
     if 'quite' in configopts['outmodes']:
-        print '\'quite\'',
+        print 'quite',
         if configopts['writelogs']:
-            print '\'write: %s\'' % (configopts['logdir']),
+            print 'write: %s' % (configopts['logdir']),
         if configopts['writepcap']:
-            print '\'pcap: all packets\''
+            print 'pcap: all packets'
         if configopts['writepcapfast']:
-            print '\'pcap: matched +%d packets\'' % (configopts['pcappacketct'])
+            print 'pcap: matched' + '%d packets' % (configopts['pcappacketct'])
     else:
-        if 'meta' in configopts['outmodes']: print '\'meta\'',
-        if 'hex' in configopts['outmodes']: print '\'hex\'',
-        if 'print' in configopts['outmodes']: print '\'print\'',
-        if 'raw' in configopts['outmodes']: print '\'raw\'',
-        if 'graph' in configopts['outmodes']: print '\'graph: %s\'' % (configopts['graphdir']),
-        if configopts['writelogs']: print '\'write: %s\'' % (configopts['logdir']),
-        if configopts['writepcap']: print '\'pcap: all packets\'',
-        if configopts['writepcapfast']: print '\'pcap: matched +%d packets\'' % (configopts['pcappacketct']),
+        if 'meta' in configopts['outmodes']: print 'meta',
+        if 'hex' in configopts['outmodes']: print 'hex',
+        if 'print' in configopts['outmodes']: print 'print',
+        if 'raw' in configopts['outmodes']: print 'raw',
+        if 'graph' in configopts['outmodes']: print 'graph: %s' % (configopts['graphdir']),
+        if configopts['writelogs']: print 'write: %s' % (configopts['logdir']),
+        if configopts['writepcap']: print 'pcap: all packets',
+        if configopts['writepcapfast']: print 'pcap: matched' + '%d packets' % (configopts['pcappacketct']),
     print ']'
 
     print '%-30s' % '[DEBUG] Misc options:',
-    print '[ BPF: \'%s\' | invertmatch: %s | killtcp: %s | graph: %s | verbose: %s | linemode: %s | multimatch: %s ]' % (
+    print '[ BPF: %s | invertmatch: %s | killtcp: %s | graph: %s | verbose: %s | linemode: %s | multimatch: %s ]' % (
             configopts['bpf'],
             configopts['invertmatch'],
             configopts['killtcp'],

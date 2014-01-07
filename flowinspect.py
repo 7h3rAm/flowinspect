@@ -3,7 +3,7 @@
 __author__  = 'Ankur Tyagi (7h3rAm)'
 __email__   = '7h3rAm [at] gmail [dot] com'
 __version__ = '0.2'
-__license__ = 'CC-BY-SA 3.0'
+__license__ = 'CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)'
 __status__  = 'Development'
 
 
@@ -11,7 +11,7 @@ import os, sys, shutil, argparse
 
 # adding custom modules path to system search paths list
 # for Python to be able to import flowinspect's core modules
-# inspired ffrom Chopshop: https://github.com/MITRECND/chopshop/blob/master/chopshop
+# inspired from Chopshop: https://github.com/MITRECND/chopshop/blob/master/chopshop
 # and this SO answer: http://stackoverflow.com/questions/4383571/importing-files-from-different-folder-in-python
 FLOWINSPECTROOTDIR = os.path.realpath(os.path.dirname(sys.argv[0]))
 sys.path.insert(0, '%s/%s' % (FLOWINSPECTROOTDIR, 'core'))
@@ -50,16 +50,6 @@ def main():
     print '%s v%s - %s' % (configopts['name'], configopts['version'], configopts['desc'])
     print '%s' % configopts['author']
     print
-
-#    sys.stdout = NullDevice()
-
-#    try:
-#        import re2 as re
-#        configopts['regexengine'] = 're2'
-#    except ImportError, ex:
-#        print '[-] Import failed: %s' % ex
-#        import re
-#        configopts['regexengine'] = 're'
 
     import re
     configopts['regexengine'] = 're'
@@ -432,6 +422,7 @@ def main():
                                     help='enable linemode (disables inspection)')
 
     args = parser.parse_args()
+    sys.stdout = NullDevice()
 
     if args.pcap:
         configopts['pcap'] = args.pcap
@@ -518,7 +509,7 @@ def main():
             configopts['dfaengine'] = None
 
     if configopts['dfaengine']:
-        if args.sdfas:
+        if args.cdfas:
             if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
             for c in args.cdfas:
                 (memberid, dfa) = validatedfaexpr(c)
@@ -693,7 +684,12 @@ def main():
         configopts['pcappacketct'] = int(args.pcappacketct)
 
     if args.colored:
-        configopts['colored'] = True
+        try:
+            from termcolor import colored
+            configopts['colored'] = True
+        except ImportError, ex:
+            print '[!] Import failed: %s' % (ex)
+            configopts['colored'] = False
 
     if args.verbose:
         configopts['verbose'] = True

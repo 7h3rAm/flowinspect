@@ -1,19 +1,18 @@
 [ ] flowinspect - A framework for network traffic inspection
-    [ ] ip flow tracking should be in sync with tcp flow tracking
-	[ ] direction identification for UDP flows
+	[ ] ip flow tracking should be in sync with tcp flow tracking
+	[ ] direction identification for UDP flows needs more work
 	[ ] linemode should not honor inspection specific flags (offset, depth, ...)
 	[ ] dfa graph should be generated independent of match status
 	[x] pcap write wont work in linemode
-	[ ] invertmatch - NOT WORKING FOR REGEX
+	[ ] invertmatch not working for regex (test with others as well)
 	[ ] multimatch offsets are incorrect for ANY direction
-	[ ] shellcode inspection should be CTS/STC/ANY
 	[ ] -y should accept path
 	[ ] -z and -Z should accept path
-	[ ] killtcp
-	[ ] udp session tracking needs testing
-	[x] tcp -T should operate on flows and not packets
-	[ ] merge show{tcp, udp}matches
-	[ ] code cleanup { delete object when done using, remove duplicate/unnecessary objects, ... }
+	[ ] killtcp needs more testing
+	[ ] udp session tracking needs more testing
+	[x] -T should operate on flows and not packets
+	[ ] merge show{tcp, udp}matches if appropriate
+	[ ] code cleanup {delete object when done using, remove duplicate/unnecessary objects, ...}
 	[x] make dfa memberids optional
-	[x] offset corrupts the packet span calculation
+	[x] nonzero offset corrupts packet span calculation
 	[x] span offsets don't include custom offset (2 instead of 1002)
