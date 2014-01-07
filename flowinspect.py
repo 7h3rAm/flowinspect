@@ -719,12 +719,12 @@ def main():
             print '[DEBUG] Fast pcap writing is incompatible with multimatch. Using slow pcap writing as fallback.'
 
     if configopts['linemode']:
+        configopts['offset'] = 0
         configopts['depth'] = 0
         del configopts['inspectionmodes'][:]
         configopts['invertmatch'] = False
         configopts['killtcp'] = False
         configopts['livemode'] = False
-        configopts['offset'] = 0
 
     if configopts['verbose']:
         dumpargsstats(configopts)
