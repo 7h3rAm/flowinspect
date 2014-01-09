@@ -271,16 +271,16 @@ def showudpmatches(data):
     direction = matchstats['direction']
     directionflag = matchstats['directionflag']
     if 'meta' in configopts['outmodes']:
+        if configopts['invertmatch']:
+            invertstatus = " (invert)"
+        else:
+            invertstatus = ""
+
         start = matchstats['start']
         end = matchstats['end']
         matchsize = matchstats['matchsize']
 
         if matchstats['detectiontype'] == 'regex':
-            if configopts['invertmatch']:
-                invertstatus = " (invert)"
-            else:
-                invertstatus = ""
-
             metastr = 'matches regex%s: \'%s\'' % (invertstatus, getregexpattern(matchstats['regex']))
 
         elif matchstats['detectiontype'] == 'dfa':
@@ -297,7 +297,7 @@ def showudpmatches(data):
                 metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (matchstats['dfapattern'], matchstats['dfastatecount'])
 
         elif matchstats['detectiontype'] == 'shellcode':
-            metastr = 'contains shellcode (Offset: %d)' % (matchstats['shellcodeoffset'])
+            metastr = 'contains shellcode [Offset: %d]%s' % (matchstats['shellcodeoffset'], invertstatus)
 
         elif matchstats['detectiontype'] == 'yara':
             metastr = 'matches rule: \'%s\' from %s' % (matchstats['yararulename'], matchstats['yararulefilepath'])

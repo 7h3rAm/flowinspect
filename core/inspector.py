@@ -433,8 +433,34 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
         offset = emulator.shellcode_getpc_test(data)
         if offset < 0: offset = 0
         emulator.prepare(data, offset)
+        emulator.test()
 
-        if not emulator.test() and emulator.emu_profile_output:
+        matched = False
+        invert = False
+        invertstatus = ""
+
+        if emulator.emu_profile_output:
+            # shellcode found!
+            if configopts['invertmatch']:
+                matched = True
+                invert = False
+                invertstatus = ""
+            else:
+                matched = True
+                invert = False
+                invertstatus = ""
+        else:
+            # shellcode not found!
+            if configopts['invertmatch']:
+                matched = True
+                invert = True
+                invertstatus = " (invert)"
+            else:
+                matched = False
+                invert = False
+                invertstatus = ""
+
+        if matched:
             emulator.free()
             matchstats['detectiontype'] = 'shellcode'
             matchstats['shellcodeoffset'] = offset
@@ -442,16 +468,17 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
             matchstats['end'] = datalen
             matchstats['matchsize'] = matchstats['end'] - matchstats['start']
             if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s contains shellcode' % (
+                print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s contains shellcode%s' % (
                         proto,
                         id,
                         src,
                         sport,
                         directionflag,
                         dst,
-                        dport)
+                        dport,
+                        invertstatus)
 
-            if configopts['emuprofile']:
+            if configopts['emuprofile'] and not invert:
                 filename = '%s-%08d-%s.%s-%s.%s-%s.emuprofile' % (
                             proto,
                             id,
@@ -474,15 +501,16 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
             return True
 
-        elif configopts['verbose'] and configopts['verboselevel'] >= 2:
-            print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s doesnot contain shellcode' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 2:
+            print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s doesnot contain shellcode%s' % (
                             proto,
                             id,
                             src,
                             sport,
                             directionflag,
                             dst,
-                            dport)
+                            dport,
+                            invertstatus)
 
     if 'yara' in configopts['inspectionmodes']:
        for ruleobj in yararuleobjects:
