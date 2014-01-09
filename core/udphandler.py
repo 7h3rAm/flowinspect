@@ -276,7 +276,12 @@ def showudpmatches(data):
         matchsize = matchstats['matchsize']
 
         if matchstats['detectiontype'] == 'regex':
-            metastr = 'matches regex: \'%s\'' % (getregexpattern(matchstats['regex']))
+            if configopts['invertmatch']:
+                invertstatus = " (invert)"
+            else:
+                invertstatus = ""
+
+            metastr = 'matches regex%s: \'%s\'' % (invertstatus, getregexpattern(matchstats['regex']))
 
         elif matchstats['detectiontype'] == 'dfa':
             if configopts['dfapartialmatch']:

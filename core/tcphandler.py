@@ -433,7 +433,12 @@ def showtcpmatches(data):
                 regexpattern = configopts['ctsregexes'][matchstats['regex']]['regexpattern']
             elif direction == configopts['stcdirectionstring']:
                 regexpattern = configopts['stcregexes'][matchstats['regex']]['regexpattern']
-            metastr = 'matches regex: \'%s\'' % (regexpattern)
+            if configopts['invertmatch']:
+                invertstatus = " (invert)"
+            else:
+                invertstatus = ""
+
+            metastr = 'matches regex%s: \'%s\'' % (invertstatus, regexpattern)
             packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
 
         elif matchstats['detectiontype'] == 'dfa':

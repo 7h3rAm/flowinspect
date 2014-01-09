@@ -10,9 +10,7 @@ from utils import printdict, hexdump
 
 
 def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrkey, direction, directionflag):
-    if configopts['regexengine'] == 're2':
-        import re2 as re
-    else:
+    if configopts['regexengine'] == 're':
         import re
     if configopts['fuzzengine']:
         from fuzzywuzzy import fuzz
@@ -64,7 +62,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
             elif direction == configopts['stcdirectionstring']:
                 regexpattern = configopts['stcregexes'][regex]['regexpattern']
 
-            if matchstats['match']:
+            if matchstats['match'] and not configopts['invertmatch']:
                 matchstats['detectiontype'] = 'regex'
                 matchstats['regex'] = regex
                 matchstats['start'] = matchstats['match'].start()
@@ -80,19 +78,33 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                             dst,
                             dport,
                             regexpattern)
-
                 return True
-            else:
-                if configopts['invertmatch']:
-                    matchstats['detectiontype'] = 'regex'
-                    matchstats['regex'] = regex
-                    matchstats['start'] = 0
-                    matchstats['end'] = datalen
-                    matchstats['matchsize'] = matchstats['end'] - matchstats['start']
-                    return True
+
+            if not matchstats['match'] and configopts['invertmatch']:
+                matchstats['detectiontype'] = 'regex'
+                matchstats['regex'] = regex
+                matchstats['start'] = 0
+                matchstats['end'] = datalen
+                matchstats['matchsize'] = matchstats['end'] - matchstats['start']
+                if configopts['verbose'] and configopts['verboselevel'] >= 2:
+                    print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s matches regex (invert): \'%s\'' % (
+                            proto,
+                            id,
+                            src,
+                            sport,
+                            directionflag,
+                            dst,
+                            dport,
+                            regexpattern)
+                return True
 
             if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s did not match regex: \'%s\'' % (
+                if configopts['invertmatch']:
+                    invertstatus = " (invert)"
+                else:
+                    invertstatus = ""
+
+                print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s did not match regex%s: \'%s\'' % (
                         proto,
                         id,
                         src,
@@ -100,6 +112,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                         directionflag,
                         dst,
                         dport,
+                        invertstatus,
                         regexpattern)
 
     if 'fuzzy' in configopts['inspectionmodes']:
