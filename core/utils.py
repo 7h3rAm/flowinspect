@@ -9,6 +9,21 @@ class NullDevice():
     def write(self, s): pass
 
 
+# generate bpf from a tcp/udp flow
+def generate_bpf(proto, aip, aport, directionflag, bip, bport):
+    l3protostr = "ip"
+
+    if proto == "TCP":
+        l4protostr = "tcp"
+        if directionflag == "<":
+            aip, bip = bip, aip
+            aport, bport = bport, aport
+    elif proto == "UDP":
+        l4protostr = "udp"
+
+    return "(%s.src == %s and %s.srcport == %s) and (%s.dst == %s and %s.dstport == %s)" % (l3protostr, aip, l4protostr, aport, l3protostr, bip, l4protostr, bport)
+
+
 # prepare a list of packets to be written to flow-named pcap
 def writepackets():
     pktlist = []

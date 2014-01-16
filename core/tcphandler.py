@@ -4,7 +4,7 @@
 import datetime, collections, nids
 from globals import configopts, opentcpflows, matchstats, ippacketsdict
 from inspector import inspect
-from utils import getregexpattern, hexdump, printable, writetofile, writepackets
+from utils import generate_bpf, getregexpattern, hexdump, printable, writetofile, writepackets
 
 
 def handletcp(tcp):
@@ -476,6 +476,10 @@ def showtcpmatches(data):
                     dst,
                     dport,
                     matchstatus)
+
+        if configopts['verbose'] and configopts['verboselevel'] >= 3:
+            bpfstr = generate_bpf("TCP", src, sport, directionflag, dst, dport)
+            print '[DEBUG] showtcpmatches - [TCP#%08d] BPF: %s' % (id, bpfstr)
 
         print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s %s' % (
                 configopts['insptcppacketct'],

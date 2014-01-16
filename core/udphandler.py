@@ -4,7 +4,7 @@
 import datetime, nids
 from globals import configopts, openudpflows, matchstats, ippacketsdict
 from inspector import inspect
-from utils import getregexpattern, hexdump, printable, writetofile
+from utils import generate_bpf, getregexpattern, hexdump, printable, writetofile
 
 
 def isudpcts(addr):
@@ -318,6 +318,10 @@ def showudpmatches(data):
                     dst,
                     dport,
                     matchstatus)
+
+        if configopts['verbose'] and configopts['verboselevel'] >= 3:
+             bpfstr = generate_bpf("UDP", src, sport, directionflag, dst, dport)
+             print '[DEBUG] showudpmatches - [UDP#%08d] BPF: %s' % (configopts['packetct'], bpfstr)
 
         print '[MATCH] (%08d/%08d) [UDP#%08d] %s:%s %s %s:%s %s' % (
                 configopts['inspudppacketct'],
