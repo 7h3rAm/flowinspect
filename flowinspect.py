@@ -17,7 +17,7 @@ FLOWINSPECTROOTDIR = os.path.realpath(os.path.dirname(sys.argv[0]))
 sys.path.insert(0, '%s/%s' % (FLOWINSPECTROOTDIR, 'core'))
 
 from globals import configopts, opentcpflows, openudpflows, ippacketsdict
-from functions import validatedfaexpr, dumpargsstats, exitwithstats
+from functions import dumpargsstats, exitwithstats
 from tcphandler import handletcp
 from udphandler import handleudp
 from iphandler import handleip
@@ -149,59 +149,6 @@ def main():
                                     action='store',
                                     required=False,
                                     help='threshold for fuzzy match (1-100) - default 75')
-
-    dfa_direction_flags = parser.add_argument_group('DFAs per Direction (\'m[0-9][1-9]=<dfa>\')')
-    dfa_direction_flags.add_argument(
-                                    '-C',
-                                    metavar='--cdfa',
-                                    dest='cdfas',
-                                    default=[],
-                                    action='append',
-                                    required=False,
-                                    help='DFA expression to match against CTS data')
-    dfa_direction_flags.add_argument(
-                                    '-S',
-                                    metavar='--sdfa',
-                                    dest='sdfas',
-                                    default=[],
-                                    action='append',
-                                    required=False,
-                                    help='DFA expression to match against STC data')
-    dfa_direction_flags.add_argument(
-                                    '-A',
-                                    metavar='--adfa',
-                                    dest='adfas',
-                                    default=[],
-                                    action='append',
-                                    required=False,
-                                    help='DFA expression to match against ANY data')
-
-    dfa_options = parser.add_argument_group('DFA Options')
-    dfa_options.add_argument(
-                                    '-l',
-                                    dest='boolop',
-                                    default=configopts['useoroperator'],
-                                    action='store_true',
-                                    required=False,
-                                    help='switch default boolean operator to \'or\'')
-    dfa_options.add_argument(
-                                    '-X',
-                                    metavar='--dfaexpr',
-                                    dest='dfaexpr',
-                                    default=None,
-                                    action='store',
-                                    required=False,
-                                    help='expression to test chain members')
-
-    dfa_options.add_argument(
-                                    '-g',
-                                    metavar='graphdir',
-                                    dest='graph',
-                                    default='',
-                                    action='store',
-                                    required=False,
-                                    nargs='?',
-                                    help='generate DFA transitions graph')
 
     yara_direction_flags = parser.add_argument_group('Yara Rules per Direction')
     yara_direction_flags.add_argument(
@@ -445,9 +392,6 @@ def main():
         configopts['reflags'] |= re.MULTILINE
         configopts['reflags'] |= re.DOTALL
 
-    if args.boolop:
-        configopts['useoroperator'] = True
-
     if args.tcpmultimatch:
         configopts['tcpmultimatch'] = True
 
@@ -497,82 +441,6 @@ def main():
 
     if args.fuzzminthreshold >= 1 and args.fuzzminthreshold <= 100:
         configopts['fuzzminthreshold'] = args.fuzzminthreshold
-
-    if args.cdfas or args.sdfas or args.adfas:
-        try:
-            from pydfa.pydfa import Rexp
-            from pydfa.graph import FA
-            configopts['dfaengine'] = 'pydfa'
-        except ImportError, ex:
-            configopts['dfaengine'] = None
-
-    if configopts['dfaengine']:
-        if args.cdfas:
-            if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
-            for c in args.cdfas:
-                (memberid, dfa) = validatedfaexpr(c)
-
-                dfaobj = Rexp(dfa)
-                configopts['ctsdfas'][dfaobj] = {
-                    'dfapattern': dfa,
-                    'memberid': memberid,
-                    'truthvalue': 'False'
-                }
-
-        if args.sdfas:
-            if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
-            for s in args.sdfas:
-                (memberid, dfa) = validatedfaexpr(s)
-
-                dfaobj = Rexp(dfa)
-                configopts['stcdfas'][dfaobj] = {
-                    'dfapattern': dfa,
-                    'memberid': memberid,
-                    'truthvalue': 'False'
-                }
-
-        if args.adfas:
-            if 'dfa' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('dfa')
-            for a in args.adfas:
-                (memberid, dfa) = validatedfaexpr(a)
-
-                dfaobj = Rexp(dfa)
-                configopts['ctsdfas'][dfaobj] = {
-                    'dfapattern': dfa,
-                    'memberid': memberid,
-                    'truthvalue': 'False'
-                }
-                configopts['stcdfas'][dfaobj] = {
-                    'dfapattern': dfa,
-                    'memberid': memberid,
-                    'truthvalue': 'False'
-                }
-
-        if len(configopts['ctsdfas']) > 0 or len(configopts['stcdfas']) > 0:
-            if args.dfaexpr:
-                configopts['dfaexpression'] = args.dfaexpr.strip().lower()
-                for token in configopts['dfaexpression'].split(' '):
-                    if token != 'and' and token != 'oand' and token != 'or':
-                        configopts['dfaexprmembers'].append(token)
-                configopts['dfaexpression'] = re.sub('oand', 'and', configopts['dfaexpression'])
-            else:
-                memberids = []
-                for dfa in configopts['ctsdfas'].keys():
-                    if configopts['ctsdfas'][dfa]['memberid'] not in memberids:
-                        memberids.append(configopts['ctsdfas'][dfa]['memberid'])
-                        if configopts['useoroperator']: memberids.append('or')
-                        else: memberids.append('and')
-                        configopts['dfaexprmembers'].append(configopts['ctsdfas'][dfa]['memberid'])
-
-                for dfa in configopts['stcdfas'].keys():
-                    if configopts['stcdfas'][dfa]['memberid'] not in memberids:
-                        memberids.append(configopts['stcdfas'][dfa]['memberid'])
-                        if configopts['useoroperator']: memberids.append('or')
-                        else: memberids.append('and')
-                        configopts['dfaexprmembers'].append(configopts['stcdfas'][dfa]['memberid'])
-
-                del memberids[-1]
-                configopts['dfaexpression'] = ' '.join(memberids)
 
     if args.cyararules or args.syararules or args.ayararules:
         try:
@@ -638,14 +506,6 @@ def main():
         if 'hex' in args.outmodes: configopts['outmodes'].append('hex')
         if 'print' in args.outmodes: configopts['outmodes'].append('print')
         if 'raw' in args.outmodes: configopts['outmodes'].append('raw')
-
-    if args.graph != '':
-        configopts['graph'] = True
-        configopts['outmodes'].append('graph')
-        if args.graph != None:
-            configopts['graphdir'] = args.graph
-        else:
-            configopts['graphdir'] = '.'
 
     try:
         import pylibemu as emu
@@ -753,11 +613,11 @@ def main():
         print '[-] NIDS error: %s' % nx
         print
         sys.exit(1)
-    except Exception, ex:
-        print
-        print '[-] Exception: %s' % ex
-        print
-        sys.exit(1)
+#    except Exception, ex:
+#        print
+#        print '[-] Exception: %s' % ex
+#        print
+#        sys.exit(1)
 
     exitwithstats()
 

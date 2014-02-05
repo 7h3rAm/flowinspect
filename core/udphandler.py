@@ -25,9 +25,9 @@ def handleudp(addr, payload, pkt):
 
     inspectcts = False
     inspectstc = False
-    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsfuzzpatterns']) > 0 or len(configopts['ctsdfas']) > 0 or len(configopts['ctsyararules']) > 0:
+    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsfuzzpatterns']) > 0 or len(configopts['ctsyararules']) > 0:
         inspectcts = True
-    if len(configopts['stcregexes']) > 0 or len(configopts['stcfuzzpatterns']) > 0 or len(configopts['stcdfas']) > 0 or len(configopts['stcyararules']) > 0:
+    if len(configopts['stcregexes']) > 0 or len(configopts['stcfuzzpatterns']) > 0 or len(configopts['stcyararules']) > 0:
         inspectstc = True
 
     if isudpcts(addr):
@@ -58,8 +58,6 @@ def handleudp(addr, payload, pkt):
                                         'ctsdatasize':0,
                                         'stcdatasize':0,
                                         'totdatasize':count,
-                                        'ctsmatcheddfastats':{},
-                                        'stcmatcheddfastats':{}
                                     }
                             })
 
@@ -221,10 +219,7 @@ def handleudp(addr, payload, pkt):
 def showudpmatches(data):
     proto = 'UDP'
 
-    if configopts['dfapartialmatch']:
-        (src, sport) = dfapartialmatches[configopts['dfapartialmatchmember']]['addr'].split(':')
-        (dst, dport) = openudpflows[dfapartialmatches[configopts['dfapartialmatchmember']]['addr']]['keydst'].split(':')
-    else: ((src, sport), (dst, dport)) = matchstats['addr']
+    ((src, sport), (dst, dport)) = matchstats['addr']
 
     if configopts['maxdispbytes'] > 0: maxdispbytes = configopts['maxdispbytes']
     else: maxdispbytes = len(data)
@@ -283,19 +278,6 @@ def showudpmatches(data):
         if matchstats['detectiontype'] == 'regex':
             metastr = 'matches regex%s: \'%s\'' % (invertstatus, getregexpattern(matchstats['regex']))
 
-        elif matchstats['detectiontype'] == 'dfa':
-            if configopts['dfapartialmatch']:
-                metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (
-                                dfapartialmatches[configopts['dfapartialmatchmember']]['dfapattern'],
-                                dfapartialmatches[configopts['dfapartialmatchmember']]['dfastatecount'])
-                direction = dfapartialmatches[configopts['dfapartialmatchmember']]['direction']
-                directionflag = dfapartialmatches[configopts['dfapartialmatchmember']]['directionflag']
-                start = dfapartialmatches[configopts['dfapartialmatchmember']]['start']
-                end = dfapartialmatches[configopts['dfapartialmatchmember']]['end']
-                matchsize = dfapartialmatches[configopts['dfapartialmatchmember']]['matchsize']
-            else:
-                metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (matchstats['dfapattern'], matchstats['dfastatecount'])
-
         elif matchstats['detectiontype'] == 'shellcode':
             metastr = 'contains shellcode [Offset: %d]%s' % (matchstats['shellcodeoffset'], invertstatus)
 
@@ -304,20 +286,6 @@ def showudpmatches(data):
 
         else:
             metastr = ''
-
-        if 'dfa' in configopts['inspectionmodes'] and 'regex' not in configopts['inspectionmodes']:
-            if configopts['dfapartialmatch']: matchstatus = '(partial: \'%s\')' % (configopts['dfapartialmatchmember'])
-            else: matchstatus = '(final: \'%s\')' % (configopts['dfaexpression'])
-            print '[MATCH] (%08d/%08d) [UDP#%08d] %s:%s %s %s:%s %s' % (
-                    configopts['inspudppacketct'],
-                    configopts['udpmatches'],
-                    configopts['packetct'],
-                    src,
-                    sport,
-                    directionflag,
-                    dst,
-                    dport,
-                    matchstatus)
 
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
              bpfstr = generate_bpf("UDP", src, sport, directionflag, dst, dport)

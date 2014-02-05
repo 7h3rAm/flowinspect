@@ -146,9 +146,10 @@ def handleip(pkt):
                 return
 
         if configopts['verbose'] and configopts['verboselevel'] >= 4:
-            print '[DEBUG] handleip - %s:%s > %s:%s TCP [ %sflags: %s | seq: %d | ack: %d | win: %d | len: %dB ]' % (
+            print '[DEBUG] handleip - %s:%s %s %s:%s TCP [ %sflags: %s, seq: %d, ack: %d, win: %d, len: %dB ]' % (
                     ipsrc,
                     tcpsport,
+                    configopts['ctsdirectionflag'],
                     ipdst,
                     tcpdport,
                     pktstats,

@@ -13,11 +13,6 @@ matchstats = {
 
     'regex':None,
 
-    'dfaobject':None,
-    'dfapattern':None,
-    'dfastatecount':0,
-    'dfaexpression':None,
-
     'start':0,
     'end':0,
     'matchsize':0,
@@ -36,8 +31,7 @@ configopts = {
     'bpf': None,
 
     'colored': False,
-    'ctsdfas': {},
-    'ctsdirectionflag': '>',
+    'ctsdirectionflag': '->',
     'ctsdirectionstring': 'CTS',
     'ctsfuzzpatterns': [],
     'ctsoutcolor': 'red',
@@ -48,11 +42,6 @@ configopts = {
     'depth': 0,
     'desc': 'A network inspection tool',
     'device': None,
-    'dfaengine': None,
-    'dfaexprmembers': [],
-    'dfafinalmatch': False,
-    'dfalist': [],
-    'dfapartialmatch': False,
     'disppacketct': 0,
     'dispstreamct': 0,
 
@@ -61,9 +50,6 @@ configopts = {
 
     'fuzzengine': None,
     'fuzzminthreshold': 75,
-
-    'graphdir': '.',
-    'graph': False,
 
     'igncase': False,
     'inspectionmodes': [],
@@ -101,8 +87,7 @@ configopts = {
 
     'shellcodeengine': None,
     'shortestmatch': { 'packet': 0, 'packetid': 0, 'stream': 0, 'streamid': 0 },
-    'stcdfas': {},
-    'stcdirectionflag': '<',
+    'stcdirectionflag': '<-',
     'stcdirectionstring': 'STC',
     'stcfuzzpatterns': [],
     'stcoutcolor': 'blue',
@@ -117,7 +102,6 @@ configopts = {
 
     'udpdone': False,
     'udpmatches': 0,
-    'useoroperator': False,
 
     'verbose': None,
     'verboselevel': 0,

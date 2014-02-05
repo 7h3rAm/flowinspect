@@ -45,9 +45,9 @@ def handletcp(tcp):
 
     inspectcts = False
     inspectstc = False
-    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsfuzzpatterns']) > 0 or len(configopts['ctsdfas']) > 0 or len(configopts['ctsyararules']) > 0:
+    if len(configopts['ctsregexes']) > 0 or len(configopts['ctsfuzzpatterns']) > 0 or len(configopts['ctsyararules']) > 0:
         inspectcts = True
-    if len(configopts['stcregexes']) > 0 or len(configopts['stcfuzzpatterns']) > 0 or len(configopts['stcdfas']) > 0 or len(configopts['stcyararules']) > 0:
+    if len(configopts['stcregexes']) > 0 or len(configopts['stcfuzzpatterns']) > 0 or len(configopts['stcyararules']) > 0:
         inspectstc = True
 
     if tcp.nids_state == nids.NIDS_JUST_EST:
@@ -62,8 +62,6 @@ def handletcp(tcp):
                                             'multimatchskipoffset': 0,
                                             'ctspacketlendict': {},
                                             'stcpacketlendict': {},
-                                            'ctsmatcheddfastats': {},
-                                            'stcmatcheddfastats': {}
                                         }
                                 })
 
@@ -330,45 +328,30 @@ def showtcpmatches(data):
     if configopts['maxdispbytes'] > 0: maxdispbytes = configopts['maxdispbytes']
     else: maxdispbytes = len(data)
 
-    if configopts['dfapartialmatch']:
-        ((src, sport), (dst, dport)) = dfapartialmatches[configopts['dfapartialmatchmember']]['addr']
+    ((src, sport), (dst, dport)) = matchstats['addr']
+    filename = '%s/%s-%08d-%s.%s-%s.%s-%s' % (configopts['logdir'], proto, opentcpflows[matchstats['addr']]['id'], src, sport, dst, dport, matchstats['direction'])
 
-        if 'quite' in configopts['outmodes']:
-            if configopts['verbose'] and configopts['verboselevel'] >= 3 and matchstats['detectiontype'] == 'regex':
-                print '[DEBUG] showtcpmatches - [TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
-                        opentcpflows[matchstats['addr']]['id'],
-                        src,
-                        sport,
-                        matchstats['directionflag'],
-                        dst,
-                        dport,
-                        getregexpattern(matchstats['regex']),
-                        matchstats['start'],
-                        matchstats['end'],
-                        matchstats['matchsize'])
-            return
+    if configopts['writelogs']:
+        writetofile(filename, data)
 
-    else:
-        ((src, sport), (dst, dport)) = matchstats['addr']
-        filename = '%s/%s-%08d-%s.%s-%s.%s-%s' % (configopts['logdir'], proto, opentcpflows[matchstats['addr']]['id'], src, sport, dst, dport, matchstats['direction'])
+        if configopts['verbose'] and configopts['verboselevel'] >= 3:
+            print '[DEBUG] showtcpmatches - [TCP#%08d] Wrote %dB to %s' % (
+                    opentcpflows[matchstats['addr']]['id'],
+                    matchstats['matchsize'],
+                    filename)
 
-        if configopts['writelogs']:
-            writetofile(filename, data)
+    if 'quite' in configopts['outmodes']:
+        if configopts['verbose'] and configopts['verboselevel'] >= 3:
+            if matchstats['detectiontype'] == 'regex':
+                pattern = getregexpattern(matchstats['regex'])
+            elif matchstats['detectiontype'] == 'fuzzy':
+                if matchstats['direction'] == 'CTS':
+                    pattern = configopts['ctsfuzzpatterns']
+                else:
+                    pattern = configopts['stcfuzzpaterns']
+        else: pattern = None
 
-            if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                print '[DEBUG] showtcpmatches - [TCP#%08d] Wrote %dB to %s' % (
-                        opentcpflows[matchstats['addr']]['id'],
-                        matchstats['matchsize'],
-                        filename)
-
-        if 'quite' in configopts['outmodes']:
-            if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                if matchstats['detectiontype'] == 'regex': pattern = getregexpattern(matchstats['regex'])
-                elif matchstats['detectiontype'] == 'dfa': pattern = matchstats['dfaexpression']
-                elif matchstats['detectiontype'] == 'fuzzy': pattern = matchstats['dfaexpression']
-                else: pattern = None
-
-                print '[DEBUG] showtcpmatches - [TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
+        print '[DEBUG] showtcpmatches - [TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
                         opentcpflows[matchstats['addr']]['id'],
                         src,
                         sport,
@@ -379,7 +362,7 @@ def showtcpmatches(data):
                         matchstats['start'],
                         matchstats['end'],
                         matchstats['matchsize'])
-            return
+        return
 
     if configopts['maxdispstreams'] != 0 and configopts['dispstreamct'] >= configopts['maxdispstreams']:
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
@@ -397,32 +380,18 @@ def showtcpmatches(data):
         else:
             invertstatus = ""
 
-        if configopts['dfapartialmatch']:
-            id = opentcpflows[dfapartialmatches[configopts['dfapartialmatchmember']]['addr']]['id']
+        id = opentcpflows[matchstats['addr']]['id']
 
-            if dfapartialmatches[configopts['dfapartialmatchmember']]['direction'] == 'CTS':
-                packetlendict = opentcpflows[dfapartialmatches[configopts['dfapartialmatchmember']]['addr']]['ctspacketlendict']
-            else:
-                packetlendict = opentcpflows[dfapartialmatches[configopts['dfapartialmatchmember']]['addr']]['stcpacketlendict']
-
-            direction = dfapartialmatches[configopts['dfapartialmatchmember']]['direction']
-            directionflag = dfapartialmatches[configopts['dfapartialmatchmember']]['directionflag']
-            start = dfapartialmatches[configopts['dfapartialmatchmember']]['start']
-            end = dfapartialmatches[configopts['dfapartialmatchmember']]['end']
-            matchsize = dfapartialmatches[configopts['dfapartialmatchmember']]['matchsize']
+        if matchstats['direction'] == 'CTS':
+            packetlendict = opentcpflows[matchstats['addr']]['ctspacketlendict']
         else:
-            id = opentcpflows[matchstats['addr']]['id']
+            packetlendict = opentcpflows[matchstats['addr']]['stcpacketlendict']
 
-            if matchstats['direction'] == 'CTS':
-                packetlendict = opentcpflows[matchstats['addr']]['ctspacketlendict']
-            else:
-                packetlendict = opentcpflows[matchstats['addr']]['stcpacketlendict']
-
-            direction = matchstats['direction']
-            directionflag = matchstats['directionflag']
-            start = matchstats['start']
-            end = matchstats['end']
-            matchsize = matchstats['matchsize']
+        direction = matchstats['direction']
+        directionflag = matchstats['directionflag']
+        start = matchstats['start']
+        end = matchstats['end']
+        matchsize = matchstats['matchsize']
 
         for (pktid, pktlen) in collections.OrderedDict(sorted(packetlendict.items())).items():
             if startpacket == 0 and (matchstats['start'] + configopts['inspoffset']) < pktlen:
@@ -441,16 +410,6 @@ def showtcpmatches(data):
             metastr = 'matches regex%s: \'%s\'' % (invertstatus, regexpattern)
             packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
 
-        elif matchstats['detectiontype'] == 'dfa':
-            if configopts['dfapartialmatch']:
-                metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (
-                    dfapartialmatches[configopts['dfapartialmatchmember']]['dfapattern'],
-                    dfapartialmatches[configopts['dfapartialmatchmember']]['dfastatecount'])
-                packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
-            else:
-                metastr = 'matches dfapattern: \'%s\' (State Count: %d)' % (matchstats['dfapattern'], matchstats['dfastatecount'])
-                packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
-
         elif matchstats['detectiontype'] == 'shellcode':
             metastr = 'contains shellcode [Offset: %d]%s' % (matchstats['shellcodeoffset'], invertstatus)
             packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
@@ -462,20 +421,6 @@ def showtcpmatches(data):
         else:
             metastr = ''
             packetstats = ''
-
-        if 'dfa' in configopts['inspectionmodes'] and 'regex' not in configopts['inspectionmodes']:
-            if configopts['dfapartialmatch']: matchstatus = '(partial: \'%s\')' % (configopts['dfapartialmatchmember'])
-            else: matchstatus = '(final: \'%s\')' % (configopts['dfaexpression'])
-            print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s %s' % (
-                    configopts['insptcppacketct'],
-                    configopts['tcpmatches'],
-                    id,
-                    src,
-                    sport,
-                    directionflag,
-                    dst,
-                    dport,
-                    matchstatus)
 
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
             bpfstr = generate_bpf("TCP", src, sport, directionflag, dst, dport)
