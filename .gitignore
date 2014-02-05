@@ -11,4 +11,6 @@ UDP-*
 install
 testfiles/*
 paper/*
-
+pres/*
+*.odp*
+*.pdf
