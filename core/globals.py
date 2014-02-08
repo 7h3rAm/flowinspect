@@ -26,7 +26,7 @@ matchstats = {
 }
 
 configopts = {
-    'author': 'Ankur Tyagi (7h3rAm [at] gmail [dot] com)',
+    'author': 'Ankur Tyagi (7h3rAm)',
 
     'bpf': None,
 

@@ -47,8 +47,8 @@ def main():
 
     sys.stdout = sys.__stdout__
     print '%s' % (banner)
-    print '%s v%s - %s' % (configopts['name'], configopts['version'], configopts['desc'])
-    print '%s' % configopts['author']
+    print '          %s - %s' % (configopts['name'], configopts['desc'])
+    print '          %s' % configopts['author']
     print
 
     import re
