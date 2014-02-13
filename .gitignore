@@ -12,5 +12,7 @@ install
 testfiles/*
 paper/*
 pres/*
+demofiles/*
+*.sh
 *.odp*
 *.pdf
