@@ -471,3 +471,7 @@ STATUS:
 A few [issues](https://github.com/7h3rAm/flowinspect/blob/master/issues) have been found through some basic testing I did during initial development. They are being worked upon. Please feel free to use flowinspect and let me know if you find any others. There's a [todo](https://github.com/7h3rAm/flowinspect/blob/develop/todo) list as well that could be useful if you are willing to contribute.
 
 
+LICENSE:
+--------
+![CC-BY-NC-SA](http://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png)
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
