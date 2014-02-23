@@ -167,8 +167,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
         invert = False
         invertstatus = ""
 
-        if emulator.emu_profile_output:
-            # shellcode found!
+        if emulator.emu_profile_output: # shellcode found!
             if configopts['invertmatch']:
                 matched = True
                 invert = False
@@ -177,8 +176,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 matched = True
                 invert = False
                 invertstatus = ""
-        else:
-            # shellcode not found!
+        else: # shellcode not found!
             if configopts['invertmatch']:
                 matched = True
                 invert = True
@@ -271,6 +269,22 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
                 return True
+
+            if configopts['verbose'] and configopts['verboselevel'] >= 2:
+                if ruleobj in configopts['ctsyararules']:
+                    filepath = configopts['ctsyararules'][ruleobj]['filepath']
+                elif ruleobj in configopts['stcyararules']:
+                    filepath = configopts['stcyararules'][ruleobj]['filepath']
+
+                dodebug('[%s#%08d] %s:%s %s %s:%s doesnot match any rule in %s' % (
+                            proto,
+                            id,
+                            src,
+                            sport,
+                            directionflag,
+                            dst,
+                            dport,
+                            filepath))
 
     return False
 

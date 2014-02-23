@@ -17,7 +17,7 @@
     [ ] udp session tracking needs more testing
     [ ] merge show{tcp, udp}matches if appropriate
     [ ] code cleanup {delete object when done using, remove duplicate/unnecessary objects, ...}
-    [ ] multimatch not working with yara
+    [x] multimatch not working with yara
     [ ] packet offset not shown for fuzzy match
     [ ] fuzzy match ratio not shown in meta output
     [ ] packet count fails when yara gives multiple matches

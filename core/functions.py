@@ -23,8 +23,8 @@ def doexit():
 def dumpmatchstats():
     if len(opentcpflows) > 0 or len(openudpflows) > 0:
         if configopts['verbose'] and configopts['verboselevel'] >= 1:
-            print
             dumpopenstreams()
+            print
 
     if len(ippacketsdict) > 0:
         if configopts['verbose'] and configopts['verboselevel'] >= 1:
@@ -57,6 +57,7 @@ def dumpmatchstats():
 
 def dumpopenstreams():
     if len(openudpflows) > 0:
+        print
         doinfo('Dumping open/tracked UDP streams: %d' % len(openudpflows))
 
         for (key, value) in openudpflows.items():
@@ -73,8 +74,7 @@ def dumpopenstreams():
                     ctsdatasize,
                     stcdatasize,
                     totdatasize,
-                    matches),
-                    'DEBUG')
+                    matches))
 
     if len(opentcpflows) > 0:
         print
@@ -105,7 +105,6 @@ def dumpopenstreams():
 
 
 def dumpippacketsdict():
-    print
     doinfo('Dumping IP packets dictionary: %d' % len(ippacketsdict.keys()))
     for key in ippacketsdict.keys():
         ((src, sport), (dst, dport)) = key

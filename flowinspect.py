@@ -465,7 +465,7 @@ def main():
             configopts['yaraengine'] = None
 
     if configopts['yaraengine']:
-        configopts['yaracallbackretval'] = yara.CALLBACK_ABORT
+        configopts['yaracallbackretval'] = yara.CALLBACK_CONTINUE
 
         if args.cyararules:
             if 'yara' not in configopts['inspectionmodes']: configopts['inspectionmodes'].append('yara')
