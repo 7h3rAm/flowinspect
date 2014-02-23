@@ -74,10 +74,13 @@ configopts = {
     'maxinspstreams': 0,
     'multiline': False,
     'name': 'flowinspect',
+    'nobanner': False,
+    'nosummary': False,
 
     'offset': 0,
     'outmodes': [],
 
+    'pcap': None,
     'packetct': 0,
     'pcappacketct': 5,
 

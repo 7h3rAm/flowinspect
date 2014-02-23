@@ -17,7 +17,7 @@ FLOWINSPECTROOTDIR = os.path.realpath(os.path.dirname(sys.argv[0]))
 sys.path.insert(0, '%s/%s' % (FLOWINSPECTROOTDIR, 'core'))
 
 from globals import configopts, opentcpflows, openudpflows, ippacketsdict
-from functions import dumpargsstats, exitwithstats
+from functions import dumpargstats, dumpmatchstats, doexit
 from tcphandler import handletcp
 from udphandler import handleudp
 from iphandler import handleip
@@ -46,10 +46,6 @@ def main():
     '''
 
     sys.stdout = sys.__stdout__
-    print '%s' % (banner)
-    print '          %s - %s' % (configopts['name'], configopts['desc'])
-    print '          %s' % configopts['author']
-    print
 
     import re
     configopts['regexengine'] = 're'
@@ -368,6 +364,22 @@ def main():
                                     required=False,
                                     help='enable linemode (disables inspection)')
 
+    misc_options.add_argument(
+                                    '-B',
+                                    dest='nobanner',
+                                    default=False,
+                                    action='store_true',
+                                    required=False,
+                                    help='skip banner/version display on startup')
+
+    misc_options.add_argument(
+                                    '-S',
+                                    dest='nosummary',
+                                    default=False,
+                                    action='store_true',
+                                    required=False,
+                                    help='skip match summary display at exit')
+
     args = parser.parse_args()
     sys.stdout = NullDevice()
 
@@ -556,7 +568,20 @@ def main():
     if args.linemode:
         configopts['linemode'] = True
 
+    if args.nobanner:
+        configopts['nobanner'] = True
+
+    if args.nosummary:
+        configopts['nosummary'] = True
+
+
     sys.stdout = sys.__stdout__
+
+    if not configopts['nobanner']:
+        print '%s' % (banner)
+        print '          %s - %s' % (configopts['name'], configopts['desc'])
+        print '          %s' % configopts['author']
+        print
 
     if not configopts['inspectionmodes'] and not configopts['linemode']:
         configopts['linemode'] = True
@@ -586,7 +611,7 @@ def main():
         configopts['livemode'] = False
 
     if configopts['verbose'] and configopts['verboselevel'] >= 1:
-        dumpargsstats(configopts)
+        dumpargstats(configopts)
 
     try:
         nids.chksum_ctl([('0.0.0.0/0', False)])
@@ -597,16 +622,12 @@ def main():
         nids.register_udp(handleudp)
         nids.register_tcp(handletcp)
 
-        if args.confirm:
-            print '[+] Callback handlers registered. Press any key to continue...',
-            try: input()
-            except: pass
-        else:
-            print '[+] Callback handlers registered'
-
         print '[+] NIDS initialized, waiting for events...' ; print
-        try: nids.run()
-        except KeyboardInterrupt: exitwithstats()
+        try:
+            nids.run()
+        except KeyboardInterrupt:
+            dumpmatchstats()
+            doexit()
 
     except nids.error, nx:
         print
@@ -619,7 +640,10 @@ def main():
 #        print
 #        sys.exit(1)
 
-    exitwithstats()
+    if not configopts['nosummary']:
+        dumpmatchstats()
+
+    doexit()
 
 if __name__ == '__main__':
     main()

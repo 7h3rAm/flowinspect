@@ -9,7 +9,14 @@ from utils import printdict, writepackets
 import sys, re
 
 
-def exitwithstats():
+def doexit():
+    print '[+] Session complete. Exiting.'
+
+    if configopts['udpmatches'] > 0 or configopts['tcpmatches'] > 0: sys.exit(0)
+    else: sys.exit(1)
+
+
+def dumpmatchstats():
     if len(opentcpflows) > 0 or len(openudpflows) > 0:
         if configopts['verbose'] and configopts['verboselevel'] >= 1:
             print
@@ -22,28 +29,25 @@ def exitwithstats():
         writepackets()
 
     print
-    if configopts['packetct'] >= 0:
-        print '[U] Processed: %d | Matches: %d | Shortest: %dB (#%d) | Longest: %dB (#%d)' % (
-                configopts['inspudppacketct'],
-                configopts['udpmatches'],
-                configopts['shortestmatch']['packet'],
-                configopts['shortestmatch']['packetid'],
-                configopts['longestmatch']['packet'],
-                configopts['longestmatch']['packetid'])
+    print '[U] Processed: %d | Matches: %d' % (configopts['inspudppacketct'], configopts['udpmatches']),
+    if configopts['udpmatches'] > 0:
+        print '[Shortest: %dB (#%d) | Longest: %dB (#%d)]' % (
+                    configopts['shortestmatch']['packet'],
+                    configopts['shortestmatch']['packetid'],
+                    configopts['longestmatch']['packet'],
+                    configopts['longestmatch']['packetid'])
+    else:
+        print
 
-    if configopts['streamct'] >= 0:
-        print '[T] Processed: %d | Matches: %d | Shortest: %dB (#%d) | Longest: %dB (#%d)' % (
-                configopts['insptcpstreamct'],
-                configopts['tcpmatches'],
-                configopts['shortestmatch']['stream'],
-                configopts['shortestmatch']['streamid'],
-                configopts['longestmatch']['stream'],
-                configopts['longestmatch']['streamid'])
-
-    print '[+] Session inspection complete. Exiting.'
-
-    if configopts['udpmatches'] > 0 or configopts['tcpmatches'] > 0: sys.exit(0)
-    else: sys.exit(1)
+    print '[T] Processed: %d | Matches: %d' % (configopts['insptcpstreamct'], configopts['tcpmatches']),
+    if configopts['tcpmatches'] > 0:
+        print '[Shortest: %dB (#%d) | Longest: %dB (#%d)]' % (
+                    configopts['shortestmatch']['stream'],
+                    configopts['shortestmatch']['streamid'],
+                    configopts['longestmatch']['stream'],
+                    configopts['longestmatch']['streamid'])
+    else:
+        print
 
 
 def dumpopenstreams():
@@ -110,11 +114,13 @@ def dumpippacketsdict():
             ippacketsdict[key]['matched'])
 
 
-def dumpargsstats(configopts):
-    print '%-30s' % '[DEBUG] Input pcap:', ; print '[ %s ]' % (configopts['pcap'])
-    print '%-30s' % '[DEBUG] Listening device:', ;print '[ %s ]' % (configopts['device']),
-    if configopts['killtcp']: print '[ w/ killtcp ]'
-    else: print
+def dumpargstats(configopts):
+    if configopts['pcap']:
+        print '%-30s' % '[DEBUG] Input pcap:', ; print '[ %s ]' % (configopts['pcap'])
+    elif configopts['device']:
+        print '%-30s' % '[DEBUG] Listening device:', ;print '[ %s ]' % (configopts['device']),
+        if configopts['killtcp']: print '[ w/ killtcp ]'
+        else: print
 
     print '%-30s' % '[DEBUG] Inspection Modes:', ;print '[',
     for mode in configopts['inspectionmodes']:

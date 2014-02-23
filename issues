@@ -12,7 +12,7 @@
     [ ] multimatch offsets are incorrect for ANY direction
     [ ] -y should accept path
     [ ] -z and -Z should accept path
-    [ ] cli to disable banner/summary
+    [x] cli to disable banner/summary
     [ ] killtcp needs more testing
     [ ] udp session tracking needs more testing
     [ ] merge show{tcp, udp}matches if appropriate
