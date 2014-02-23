@@ -6,7 +6,7 @@
 
 import sys, nids
 from globals import configopts, opentcpflows, openudpflows, matchstats
-from utils import printdict, hexdump
+from utils import printdict, hexdump, doinfo, dodebug, dowarn, doerror
 
 
 def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrkey, direction, directionflag):
@@ -38,7 +38,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 addrkey = dkey
 
     if configopts['verbose'] and configopts['verboselevel'] >= 2:
-        print '[DEBUG] inspect - [%s#%08d] Received %dB for inspection from %s:%s %s %s:%s' % (
+        dodebug('[%s#%08d] Received %dB for inspection from %s:%s %s %s:%s' % (
                 proto,
                 id,
                 datalen,
@@ -46,7 +46,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 sport,
                 directionflag,
                 dst,
-                dport)
+                dport))
 
     if 'regex' in configopts['inspectionmodes']:
         for regex in regexes:
@@ -64,7 +64,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 matchstats['end'] = matchstats['match'].end()
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
                 if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                    print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s matches regex: \'%s\'' % (
+                    dodebug('[%s#%08d] %s:%s %s %s:%s matches regex: \'%s\'' % (
                             proto,
                             id,
                             src,
@@ -72,7 +72,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                             directionflag,
                             dst,
                             dport,
-                            regexpattern)
+                            regexpattern))
                 return True
 
             if not matchstats['match'] and configopts['invertmatch']:
@@ -82,7 +82,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 matchstats['end'] = datalen
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
                 if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                    print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s matches regex (invert): \'%s\'' % (
+                    dodebug('[%s#%08d] %s:%s %s %s:%s matches regex (invert): \'%s\'' % (
                             proto,
                             id,
                             src,
@@ -90,7 +90,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                             directionflag,
                             dst,
                             dport,
-                            regexpattern)
+                            regexpattern))
                 return True
 
             if configopts['verbose'] and configopts['verboselevel'] >= 2:
@@ -99,7 +99,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 else:
                     invertstatus = ""
 
-                print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s did not match regex%s: \'%s\'' % (
+                dodebug('[%s#%08d] %s:%s %s %s:%s did not match regex%s: \'%s\'' % (
                         proto,
                         id,
                         src,
@@ -108,7 +108,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                         dst,
                         dport,
                         invertstatus,
-                        regexpattern)
+                        regexpattern))
 
     if 'fuzzy' in configopts['inspectionmodes']:
         for pattern in fuzzpatterns:
@@ -134,7 +134,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                     matchreason = '<'
 
             if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s %s \'%s\' (ratio: %d %s threshold: %d)' % (
+                dodebug('[%s#%08d] %s:%s %s %s:%s %s \'%s\' (ratio: %d %s threshold: %d)' % (
                         proto,
                         id,
                         src,
@@ -146,7 +146,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                         pattern,
                         partialratio,
                         matchreason,
-                        configopts['fuzzminthreshold'])
+                        configopts['fuzzminthreshold']))
 
             if matched:
                 matchstats['detectiontype'] = 'fuzzy'
@@ -196,7 +196,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
             matchstats['end'] = datalen
             matchstats['matchsize'] = matchstats['end'] - matchstats['start']
             if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s contains shellcode%s' % (
+                dodebug('[%s#%08d] %s:%s %s %s:%s contains shellcode%s' % (
                         proto,
                         id,
                         src,
@@ -204,7 +204,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                         directionflag,
                         dst,
                         dport,
-                        invertstatus)
+                        invertstatus))
 
             if configopts['emuprofile'] and not invert:
                 filename = '%s-%08d-%s.%s-%s.%s-%s.emuprofile' % (
@@ -219,18 +219,18 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 data = emulator.emu_profile_output.decode('utf8')
 
                 if emulator.emu_profile_truncated and configopts['verbose'] and configopts['verboselevel'] >= 2:
-                    print '[DEBUG] inspect - [%s#%08d] Skipping emulator profile output generation as its truncated' % (proto, id)
+                    dodebug('[%s#%08d] Skipping emulator profile output generation as its truncated' % (proto, id))
                 else:
                     fo = open(filename, 'w')
                     fo.write(data)
                     fo.close()
                     if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                        print '[DEBUG] inspect - [%s#%08d] Wrote %d byte emulator profile output to %s' % (proto, id, len(data), filename)
+                        dodebug('[%s#%08d] Wrote %d byte emulator profile output to %s' % (proto, id, len(data), filename))
 
             return True
 
         if configopts['verbose'] and configopts['verboselevel'] >= 2:
-            print '[DEBUG] inspect - [%s#%08d] %s:%s %s %s:%s doesnot contain shellcode%s' % (
+            dodebug('[%s#%08d] %s:%s %s %s:%s doesnot contain shellcode%s' % (
                             proto,
                             id,
                             src,
@@ -238,7 +238,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                             directionflag,
                             dst,
                             dport,
-                            invertstatus)
+                            invertstatus))
 
     if 'yara' in configopts['inspectionmodes']:
        for ruleobj in yararuleobjects:

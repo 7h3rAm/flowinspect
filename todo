@@ -40,7 +40,7 @@
     [ ] prefer re2 over re
     [ ] boolean parser for all modes
     [ ] combination of inspection modes
-    [ ] timetamped (non)debug output
+    [x] timetamped (non)debug output
     [ ] file extraction over HTTP/SMTP/IMAP/POP3/FTP/TFTP/...
     [ ] ssl decryption via user certificates
     [ ] configuration file support

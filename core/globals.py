@@ -47,6 +47,7 @@ configopts = {
 
     'emuprofile': False,
     'emuprofileoutsize': 1024,
+    'endtime': None,
 
     'fuzzengine': None,
     'fuzzminthreshold': 75,
@@ -90,6 +91,7 @@ configopts = {
 
     'shellcodeengine': None,
     'shortestmatch': { 'packet': 0, 'packetid': 0, 'stream': 0, 'streamid': 0 },
+    'starttime': None,
     'stcdirectionflag': '<-',
     'stcdirectionstring': 'STC',
     'stcfuzzpatterns': [],

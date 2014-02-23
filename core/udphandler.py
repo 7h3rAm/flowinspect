@@ -4,7 +4,13 @@
 import datetime, nids
 from globals import configopts, openudpflows, matchstats, ippacketsdict
 from inspector import inspect
-from utils import generate_bpf, getregexpattern, hexdump, printable, writetofile
+from utils import generate_bpf, getregexpattern, hexdump, printable, writetofile, doinfo, dodebug, dowarn, doerror
+
+
+try:
+    from termcolor import colored
+except ImportError, ex:
+    configopts['colored'] = False
 
 
 def isudpcts(addr):
@@ -95,7 +101,7 @@ def handleudp(addr, payload, pkt):
                 yararuleobjects.append(yararuleobj)
 
     if configopts['verbose'] and configopts['verboselevel'] >= 3:
-        print '[DEBUG] handleudp - [UDP#%08d] %s %s %s [%dB] (TRACKED: %d) (CTS: %dB | STC: %dB | TOT: %dB)' % (
+        dodebug('[UDP#%08d] %s %s %s [%dB] (TRACKED: %d) (CTS: %dB | STC: %dB | TOT: %dB)' % (
                 openudpflows[key]['id'],
                 key,
                 directionflag,
@@ -104,26 +110,26 @@ def handleudp(addr, payload, pkt):
                 len(openudpflows),
                 openudpflows[key]['ctsdatasize'],
                 openudpflows[key]['stcdatasize'],
-                openudpflows[key]['totdatasize'])
+                openudpflows[key]['totdatasize']))
 
     if not configopts['linemode']:
         if configopts['udpdone']:
             if configopts['tcpdone']:
                 if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                    print '[DEBUG] handleudp - Done inspecting max packets (%d) and max streams (%d), \
+                    dodebug('Done inspecting max packets (%d) and max streams (%d), \
                             preparing for exit' % (
                             configopts['maxinsppackets'],
-                            configopts['maxinspstreams'])
+                            configopts['maxinspstreams']))
                 exitwithstats()
             else:
                 if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                    print '[DEBUG] handleudp - Ignoring packet %s:%s %s %s:%s (inspudppacketct: %d == maxinsppackets: %d)' % (
+                    dodebug('Ignoring packet %s:%s %s %s:%s (inspudppacketct: %d == maxinsppackets: %d)' % (
                             src,
                             sport,
                             dst,
                             dport,
                             configopts['inspudppacketct'],
-                            configopts['maxinsppackets'])
+                            configopts['maxinsppackets']))
             return
 
     configopts['inspudppacketct'] += 1
@@ -136,7 +142,7 @@ def handleudp(addr, payload, pkt):
         matchstats['direction'] = direction
         matchstats['directionflag'] = directionflag
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] handleudp - [UDP#%08d] Skipping inspection as linemode is enabled.' % (configopts['packetct'])
+            dodebug('[UDP#%08d] Skipping inspection as linemode is enabled.' % (configopts['packetct']))
         showudpmatches(data[matchstats['start']:matchstats['end']])
 
         if configopts['writepcap']:
@@ -160,12 +166,12 @@ def handleudp(addr, payload, pkt):
     inspdatalen = len(inspdata)
 
     if configopts['verbose'] and configopts['verboselevel'] >= 3:
-        print '[DEBUG] handleudp - [UDP#%08d] Initiating inspection on %s[%d:%d] - %dB' % (
+        dodebug('[UDP#%08d] Initiating inspection on %s[%d:%d] - %dB' % (
                 configopts['packetct'],
                 direction,
                 offset,
                 depth,
-                inspdatalen)
+                inspdatalen))
 
     matched = inspect('UDP', inspdata, inspdatalen, regexes, fuzzpatterns, yararuleobjects, addrkey, direction, directionflag)
 
@@ -230,7 +236,7 @@ def showudpmatches(data):
         writetofile(filename, data)
 
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] showudpmatches - [UDP#%08d] Wrote %dB to %s/%s-%08d.%s.%s.%s.%s' % (
+            dodebug('[UDP#%08d] Wrote %dB to %s/%s-%08d.%s.%s.%s.%s' % (
                     configopts['packetct'],
                     matchstats['matchsize'],
                     configopts['logdir'],
@@ -239,11 +245,11 @@ def showudpmatches(data):
                     src,
                     sport,
                     dst,
-                    dport)
+                    dport))
 
     if 'quite' in configopts['outmodes']:
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] showudpmatches - [UDP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
+            dodebug('[UDP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
                     configopts['packetct'],
                     src,
                     sport,
@@ -253,14 +259,14 @@ def showudpmatches(data):
                     getregexpattern(matchstats['regex']),
                     matchstats['start'],
                     matchstats['end'],
-                    matchstats['matchsize'])
+                    matchstats['matchsize']))
         return
 
     if configopts['maxdisppackets'] != 0 and configopts['disppacketct'] >= configopts['maxdisppackets']:
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] showudpmatches - Skipping outmode parsing (disppacketct: %d == maxdisppackets: %d)' % (
+            dodebug('Skipping outmode parsing (disppacketct: %d == maxdisppackets: %d)' % (
                     configopts['disppacketct'],
-                    configopts['maxdisppackets'])
+                    configopts['maxdisppackets']))
         return
 
     direction = matchstats['direction']
@@ -289,7 +295,7 @@ def showudpmatches(data):
 
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
              bpfstr = generate_bpf("UDP", src, sport, directionflag, dst, dport)
-             print '[DEBUG] showudpmatches - [UDP#%08d] BPF: %s' % (configopts['packetct'], bpfstr)
+             dodebug('[UDP#%08d] BPF: %s' % (configopts['packetct'], bpfstr))
 
         print '[MATCH] (%08d/%08d) [UDP#%08d] %s:%s %s %s:%s %s' % (
                 configopts['inspudppacketct'],
@@ -321,7 +327,10 @@ def showudpmatches(data):
             printable(data[:maxdispbytes], None)
 
     if 'raw' in configopts['outmodes']:
-        print data[:maxdispbytes]
+        if configopts['colored']:
+            print colored(data[:maxdispbytes])
+        else:
+            print data[:maxdispbytes]
 
     if 'hex' in configopts['outmodes']:
         if configopts['colored']:
@@ -334,6 +343,9 @@ def showudpmatches(data):
 
     configopts['dispstreamct'] += 1
 
+    if not configopts['colored']:
+        print
+
 
 def markmatchedippackets(addrkey):
     ((src, sport), (dst, dport)) = addrkey
@@ -344,28 +356,28 @@ def markmatchedippackets(addrkey):
         ippacketsdict[addrkey]['matched'] = True
         ippacketsdict[addrkey]['id'] = configopts['packetct']
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] handleudp - [UDP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
+            dodebug('[UDP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
                             configopts['packetct'],
                             src,
                             sport,
                             dst,
-                            dport)
+                            dport))
 
     elif newaddrkey in ippacketsdict.keys() and ippacketsdict[newaddrkey]['proto'] == 'UDP':
         ippacketsdict[newaddrkey]['matched'] = True
         ippacketsdict[newaddrkey]['id'] = configopts['packetct']
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] handleudp - [UDP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
+            dodebug('[UDP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
                             configopts['packetct'],
                             src,
                             sport,
                             dst,
-                            dport)
+                            dport))
 
     elif configopts['verbose'] and configopts['verboselevel'] >= 3:
-        print '[DEBUG] handleudp - [UDP#%08d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
+        dodebug('[UDP#%08d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
                             configopts['packetct'],
                             src,
                             sport,
                             dst,
-                            dport)
+                            dport))

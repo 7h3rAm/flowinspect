@@ -4,7 +4,7 @@
 import datetime, nids
 from globals import configopts, openudpflows, matchstats, ippacketsdict
 from inspector import inspect
-from utils import getregexpattern, hexdump, printable, writepackets
+from utils import getregexpattern, hexdump, printable, writepackets, doinfo, dodebug, dowarn, doerror
 
 import sys, socket
 from struct import unpack
@@ -97,13 +97,13 @@ def handleip(pkt):
                 else:
                     if (len(ippacketsdict[fivetuple]) - ipmetavars) == (ippacketsdict[fivetuple]['matchedid'] + configopts['pcappacketct']):
                         if configopts['verbose'] and configopts['verboselevel'] >= 4:
-                            print '[DEBUG] iphandler - Post match packet collection complete for %s:%s - %s:%s (matchpacket: %d | postpackets: +%d)' % (
+                            dodebug('Post match packet collection complete for %s:%s - %s:%s { matchpacket: %d, postpackets: +%d }' % (
                                     ipsrc,
                                     tcpsport,
                                     ipdst,
                                     tcpdport,
                                     ippacketsdict[fivetuple]['matchedid'],
-                                    configopts['pcappacketct'])
+                                    configopts['pcappacketct']))
 
                         writepackets()
                     else:
@@ -119,13 +119,13 @@ def handleip(pkt):
                 else:
                     if (len(ippacketsdict[revfivetuple]) - ipmetavars) == (ippacketsdict[revfivetuple]['matchedid'] + configopts['pcappacketct']):
                         if configopts['verbose'] and configopts['verboselevel'] >= 4:
-                            print '[DEBUG] iphandler - Post match packet collection complete for %s:%s - %s:%s (matchpacket: %d | postpackets: +%d)' % (
+                            dodebug('Post match packet collection complete for %s:%s - %s:%s { matchpacket: %d, postpackets: +%d }' % (
                                     ipsrc,
                                     tcpsport,
                                     ipdst,
                                     tcpdport,
                                     ippacketsdict[revfivetuple]['matchedid'],
-                                    configopts['pcappacketct'])
+                                    configopts['pcappacketct']))
 
                         writepackets()
                     else:
@@ -146,7 +146,7 @@ def handleip(pkt):
                 return
 
         if configopts['verbose'] and configopts['verboselevel'] >= 4:
-            print '[DEBUG] handleip - %s:%s %s %s:%s TCP [ %sflags: %s, seq: %d, ack: %d, win: %d, len: %dB ]' % (
+            dodebug('[IP] %s:%s %s %s:%s TCP { %sflags: %s, seq: %d, ack: %d, win: %d, len: %dB }' % (
                     ipsrc,
                     tcpsport,
                     configopts['ctsdirectionflag'],
@@ -157,7 +157,7 @@ def handleip(pkt):
                     tcpseq,
                     tcpack,
                     tcpwindow,
-                    len(data))
+                    len(data)))
 
     elif ipproto == ipprotodict['udp']:
         udphdr = unpack('!HHHH', pkt[ipihl:ipihl+UDPHDRLEN])
@@ -200,13 +200,13 @@ def handleip(pkt):
                 else:
                     if (len(ippacketsdict[fivetuple]) - ipmetavars) == (ippacketsdict[fivetuple]['matchedid'] + configopts['pcappacketct']):
                         if configopts['verbose'] and configopts['verboselevel'] >= 4:
-                            print '[DEBUG] iphandler - Post match packet collection complete for %s:%s - %s:%s (matchpacket: %d | postpackets: +%d)' % (
+                            dodebug('Post match packet collection complete for %s:%s - %s:%s { matchpacket: %d, postpackets: +%d }' % (
                                     ipsrc,
                                     udpsport,
                                     ipdst,
                                     udpdport,
                                     ippacketsdict[fivetuple]['matchedid'],
-                                    configopts['pcappacketct'])
+                                    configopts['pcappacketct']))
 
                         writepackets()
                     else:
@@ -222,13 +222,13 @@ def handleip(pkt):
                 else:
                     if (len(ippacketsdict[revfivetuple]) - ipmetavars) == (ippacketsdict[revfivetuple]['matchedid'] + configopts['pcappacketct']):
                         if configopts['verbose'] and configopts['verboselevel'] >= 4:
-                            print '[DEBUG] iphandler - Post match packet collection complete for %s:%s - %s:%s (matchpacket: %d | postpackets: +%d)' % (
+                            dodebug('Post match packet collection complete for %s:%s - %s:%s { matchpacket: %d, postpackets: +%d }' % (
                                     ipsrc,
                                     udpsport,
                                     ipdst,
                                     udpdport,
                                     ippacketsdict[revfivetuple]['matchedid'],
-                                    configopts['pcappacketct'])
+                                    configopts['pcappacketct']))
 
                         writepackets()
                     else:
@@ -246,10 +246,10 @@ def handleip(pkt):
                 pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
 
         if configopts['verbose'] and configopts['verboselevel'] >= 4:
-            print '[DEBUG] handleip - %s:%s > %s:%s UDP [ %slen: %dB ]' % (
+            dodebug('[IP] %s:%s > %s:%s UDP { %slen: %dB }' % (
                     ipsrc,
                     udpsport,
                     ipdst,
                     udpdport,
                     pktstats,
-                    len(data))
+                    len(data)))

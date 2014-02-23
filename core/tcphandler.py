@@ -4,7 +4,13 @@
 import datetime, collections, nids
 from globals import configopts, opentcpflows, matchstats, ippacketsdict
 from inspector import inspect
-from utils import generate_bpf, getregexpattern, hexdump, printable, writetofile, writepackets
+from utils import generate_bpf, getregexpattern, hexdump, printable, writetofile, writepackets, doinfo, dodebug, dowarn, doerror
+
+
+try:
+    from termcolor import colored
+except ImportError, ex:
+    configopts['colored'] = False
 
 
 def handletcp(tcp):
@@ -18,23 +24,23 @@ def handletcp(tcp):
             if configopts['udpdone']:
                 if configopts['verbose'] and configopts['verboselevel'] >= 3:
                     if addrkey in opentcpflows: id = opentcpflows[addrkey]['id']
-                    print '[DEBUG] handletcp - [TCP#%08d] Done inspecting max packets (%d) and max streams (%d), \
+                    dodebug('[TCP#%08d] Done inspecting max packets (%d) and max streams (%d), \
                             preparing for exit' % (
                             id,
                             configopts['maxinsppackets'],
-                            configopts['maxinspstreams'])
+                            configopts['maxinspstreams']))
                 exitwithstats()
             else:
                 if configopts['verbose'] and configopts['verboselevel'] >= 3:
                     if addrkey in opentcpflows: id = opentcpflows[addrkey]['id']
-                    print '[DEBUG] handletcp - [TCP#%08d] Ignoring stream %s:%s %s %s:%s (insptcppacketct: %d == maxinspstreams: %d)' % (
+                    dodebug('[TCP#%08d] Ignoring stream %s:%s %s %s:%s (insptcppacketct: %d == maxinspstreams: %d)' % (
                             id,
                             src,
                             sport,
                             dst,
                             dport,
                             configopts['insptcppacketct'],
-                            configopts['maxinspstreams'])
+                            configopts['maxinspstreams']))
             return
 
     regexes = []
@@ -66,43 +72,43 @@ def handletcp(tcp):
                                 })
 
             if configopts['verbose']  and configopts['verboselevel'] >= 3:
-                print '[DEBUG] handletcp - [TCP#%08d] %s:%s - %s:%s [NEW] (TRACKED: %d)' % (
+                dodebug('[TCP#%08d] %s:%s - %s:%s [NEW] (TRACKED: %d)' % (
                         opentcpflows[addrkey]['id'],
                         src,
                         sport,
                         dst,
                         dport,
-                        len(opentcpflows))
+                        len(opentcpflows)))
 
         if configopts['linemode'] or 'shellcode' in configopts['inspectionmodes']:
             tcp.server.collect = 1
             tcp.client.collect = 1
             if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                print '[DEBUG] handletcp - [TCP#%08d] Enabled both CTS and STC data collection for %s:%s - %s:%s' % (
+                dodebug('[TCP#%08d] Enabled both CTS and STC data collection for %s:%s - %s:%s' % (
                         opentcpflows[addrkey]['id'],
                         src,
                         sport,
                         dst,
-                        dport)
+                        dport))
         else:
             if inspectcts or 'shellcode' in configopts['inspectionmodes']:
                 tcp.server.collect = 1
                 if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                    print '[DEBUG] handletcp - [TCP#%08d] Enabled CTS data collection for %s:%s - %s:%s' % (
+                    dodebug('[TCP#%08d] Enabled CTS data collection for %s:%s - %s:%s' % (
                         opentcpflows[addrkey]['id'],
                         src,
                         sport,
                         dst,
-                        dport)
+                        dport))
             if inspectstc or 'shellcode' in configopts['inspectionmodes']:
                 tcp.client.collect = 1
                 if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                    print '[DEBUG] handletcp - [TCP#%08d] Enabled STC data collection for %s:%s - %s:%s' % (
+                    dodebug('[TCP#%08d] Enabled STC data collection for %s:%s - %s:%s' % (
                         opentcpflows[addrkey]['id'],
                         src,
                         sport,
                         dst,
-                        dport)
+                        dport))
 
     if tcp.nids_state == nids.NIDS_DATA:
         tcp.discard(0)
@@ -184,7 +190,7 @@ def handletcp(tcp):
                     yararuleobjects.append(yararuleobj)
 
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] handletcp - [TCP#%08d] %s:%s %s %s:%s [%dB] (CTS: %d | STC: %d | TOT: %d)' % (
+            dodebug('[TCP#%08d] %s:%s %s %s:%s [%dB] (CTS: %d | STC: %d | TOT: %d)' % (
                     opentcpflows[addrkey]['id'],
                     src,
                     sport,
@@ -194,7 +200,7 @@ def handletcp(tcp):
                     newcount,
                     tcp.server.count,
                     tcp.client.count,
-                    opentcpflows[addrkey]['totdatasize'])
+                    opentcpflows[addrkey]['totdatasize']))
 
         if configopts['linemode']:
             matchstats['addr'] = addrkey
@@ -203,7 +209,7 @@ def handletcp(tcp):
             matchstats['matchsize'] = matchstats['end'] - matchstats['start']
             matchstats['direction'] = direction
             matchstats['directionflag'] = directionflag
-            if configopts['verbose']: print '[DEBUG] handletcp - [TCP#%08d] Skipping inspection as linemode is enabled.' % (opentcpflows[addrkey]['id'])
+            if configopts['verbose']: dodebug('[TCP#%08d] Skipping inspection as linemode is enabled.' % (opentcpflows[addrkey]['id']))
             showtcpmatches(inspdata[matchstats['start']:matchstats['end']])
             if configopts['writepcap']:
                 markmatchedippackets(addrkey)
@@ -213,12 +219,12 @@ def handletcp(tcp):
             configopts['tcpdone'] = True
 
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] handletcp - [TCP#%08d] Initiating inspection on %s[%d:%d] - %dB' % (
+            dodebug('[TCP#%08d] Initiating inspection on %s[%d:%d] - %dB' % (
                     opentcpflows[addrkey]['id'],
                     direction,
                     offset,
                     depth,
-                    inspdatalen)
+                    inspdatalen))
 
         opentcpflows[addrkey]['insppackets'] += 1
 
@@ -278,13 +284,13 @@ def handletcp(tcp):
                 tcp.server.collect = 0
                 tcp.client.collect = 0
                 if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                    print '[DEBUG] handletcp - [TCP#%08d] %s:%s - %s:%s not being tracked any further (tcpmultimatch: %s)' % (
+                    dodebug('[TCP#%08d] %s:%s - %s:%s not being tracked any further (tcpmultimatch: %s)' % (
                             opentcpflows[addrkey]['id'],
                             src,
                             sport,
                             dst,
                             dport,
-                            configopts['tcpmultimatch'])
+                            configopts['tcpmultimatch']))
                 del opentcpflows[addrkey]
             else:
                 if direction == configopts['ctsdirectionstring']:
@@ -295,10 +301,10 @@ def handletcp(tcp):
                 opentcpflows[addrkey]['multimatchskipoffset'] += matchstats['end']
 
                 if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                    print '[DEBUG] handletcp - [TCP#%08d] Marked %dB to be skipped for further %s inspection' % (
+                    dodebug('[TCP#%08d] Marked %dB to be skipped for further %s inspection' % (
                             opentcpflows[addrkey]['id'],
                             opentcpflows[addrkey]['multimatchskipoffset'],
-                            direction)
+                            direction))
 
         else:
             opentcpflows[addrkey]['previnspbufsize'] = inspdatalen
@@ -312,14 +318,14 @@ def handletcp(tcp):
                 elif tcp.nids_state == nids.NIDS_TIMED_OUT: state = 'TIMED_OUT'
                 elif tcp.nids_state == nids.NIDS_RESET: state = 'RST'
                 else: state = 'UNKNOWN'
-                print '[DEBUG] handletcp - [TCP#%08d] %s:%s - %s:%s [%s] (TRACKED: %d)' % (
+                dodebug('[TCP#%08d] %s:%s - %s:%s [%s] (TRACKED: %d)' % (
                         id,
                         src,
                         sport,
                         dst,
                         dport,
                         state,
-                        len(opentcpflows))
+                        len(opentcpflows)))
 
 
 def showtcpmatches(data):
@@ -335,23 +341,22 @@ def showtcpmatches(data):
         writetofile(filename, data)
 
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] showtcpmatches - [TCP#%08d] Wrote %dB to %s' % (
+            dodebug('[TCP#%08d] Wrote %dB to %s' % (
                     opentcpflows[matchstats['addr']]['id'],
                     matchstats['matchsize'],
-                    filename)
+                    filename))
 
     if 'quite' in configopts['outmodes']:
-        if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            if matchstats['detectiontype'] == 'regex':
-                pattern = getregexpattern(matchstats['regex'])
-            elif matchstats['detectiontype'] == 'fuzzy':
-                if matchstats['direction'] == 'CTS':
-                    pattern = configopts['ctsfuzzpatterns']
-                else:
-                    pattern = configopts['stcfuzzpaterns']
-        else: pattern = None
+        if matchstats['detectiontype'] == 'regex':
+            pattern = getregexpattern(matchstats['regex'])
+        elif matchstats['detectiontype'] == 'fuzzy':
+            if matchstats['direction'] == 'CTS':
+                pattern = configopts['ctsfuzzpatterns']
+            else:
+                pattern = configopts['stcfuzzpaterns']
 
-        print '[DEBUG] showtcpmatches - [TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 3:
+            dodebug('[TCP#%08d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
                         opentcpflows[matchstats['addr']]['id'],
                         src,
                         sport,
@@ -361,14 +366,14 @@ def showtcpmatches(data):
                         pattern,
                         matchstats['start'],
                         matchstats['end'],
-                        matchstats['matchsize'])
+                        matchstats['matchsize']))
         return
 
     if configopts['maxdispstreams'] != 0 and configopts['dispstreamct'] >= configopts['maxdispstreams']:
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] showtcpmatches - Skipping outmode parsing (dispstreamct: %d == maxdispstreams: %d)' % (
+            dodebug('Skipping outmode parsing (dispstreamct: %d == maxdispstreams: %d)' % (
                     configopts['dispstreamct'],
-                    configopts['maxdispstreams'])
+                    configopts['maxdispstreams']))
         return
 
     direction = matchstats['direction']
@@ -424,7 +429,7 @@ def showtcpmatches(data):
 
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
             bpfstr = generate_bpf("TCP", src, sport, directionflag, dst, dport)
-            print '[DEBUG] showtcpmatches - [TCP#%08d] BPF: %s' % (id, bpfstr)
+            dodebug('[TCP#%08d] BPF: %s' % (id, bpfstr))
 
         print '[MATCH] (%08d/%08d) [TCP#%08d] %s:%s %s %s:%s %s' % (
                 configopts['insptcppacketct'],
@@ -457,7 +462,10 @@ def showtcpmatches(data):
             printable(data[:maxdispbytes], None)
 
     if 'raw' in configopts['outmodes']:
-        print data[:maxdispbytes]
+        if configopts['colored']:
+            print colored(data[:maxdispbytes])
+        else:
+            print data[:maxdispbytes]
 
     if 'hex' in configopts['outmodes']:
         if configopts['colored']:
@@ -470,6 +478,9 @@ def showtcpmatches(data):
 
     configopts['dispstreamct'] += 1
 
+    if not configopts['colored']:
+        print
+
 
 def markmatchedippackets(addrkey):
     ((src, sport), (dst, dport)) = addrkey
@@ -480,29 +491,29 @@ def markmatchedippackets(addrkey):
         ippacketsdict[addrkey]['matched'] = True
         ippacketsdict[addrkey]['id'] = opentcpflows[addrkey]['id']
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] handletcp - [TCP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
+            dodebug('[TCP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
                     opentcpflows[addrkey]['id'],
                     src,
                     sport,
                     dst,
-                    dport)
+                    dport))
 
     elif newaddrkey in ippacketsdict.keys() and ippacketsdict[newaddrkey]['proto'] == 'TCP':
         ippacketsdict[newaddrkey]['matched'] = True
         ippacketsdict[newaddrkey]['id'] = opentcpflows[addrkey]['id']
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] handletcp - [TCP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
+            dodebug('[TCP#%08d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
                     opentcpflows[newaddrkey]['id'],
                     src,
                     sport,
                     dst,
-                    dport)
+                    dport))
 
     elif not configopts['linemode']:
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            print '[DEBUG] handletcp - [TCP#%08d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
+            dodebug('[TCP#%08d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
                     opentcpflows[addrkey]['id'],
                     src,
                     sport,
                     dst,
-                    dport)
+                    dport))

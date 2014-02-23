@@ -1,7 +1,46 @@
 # flowinspect misc. utilities
 
 from globals import configopts, ippacketsdict
-import sys, os, pickle, collections, json, struct, binascii, random
+import sys, os, pickle, collections, json, struct, binascii, random, re, time, datetime, inspect
+
+
+# get current timestamp
+def getcurtime():
+    return datetime.datetime.now()
+
+
+# get current formatted timestamp
+def gettimestamp():
+    return "%s %s" % (datetime.datetime.now().strftime("%d-%b-%Y %H:%M:%S.%f"), time.tzname[0])
+
+
+# print message with debug level and function/module name
+def doprint(msg, level='INFO', back=0):
+    frame = sys._getframe(back + 1)
+    filename = os.path.basename(frame.f_code.co_filename)
+    lineno = frame.f_lineno
+    funcname = frame.f_code.co_name
+    print "[%s] [%s:%s] %s" % (gettimestamp(), level, funcname, msg)
+
+
+# print info messages
+def doinfo(msg):
+    doprint(msg, 'INFO', back=1)
+
+
+# print debug messages
+def dodebug(msg):
+    doprint(msg, 'DEBUG', back=1)
+
+
+# print warning messages
+def dowarn(msg):
+    doprint(msg, 'WARN', back=1)
+
+
+# print error messages
+def doerror(msg):
+    doprint(msg, 'ERROR', back=1)
 
 
 # when stdout has to be mute'd
@@ -145,7 +184,7 @@ def hexdump(data, color, length=16, sep='.'):
         elif color == configopts['stcoutcolor']:
             print colored(''.join(lines), configopts['stcoutcolor'], attrs=configopts['stcoutcolorattrs'])
     else:
-        print ''.join(lines)
+        print ''.join(lines),
 
 
 # ascii printable filter for raw bytes

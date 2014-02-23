@@ -4,13 +4,17 @@ from globals import configopts, opentcpflows, openudpflows, ippacketsdict
 from tcphandler import handletcp
 from udphandler import handleudp
 from iphandler import handleip
-from utils import printdict, writepackets
+from utils import getcurtime, printdict, writepackets, doinfo, dodebug, dowarn, doerror
 
-import sys, re
+import sys
 
 
 def doexit():
-    print '[+] Session complete. Exiting.'
+    configopts['endtime'] = getcurtime()
+    configopts['totalruntime'] = configopts['endtime'] - configopts['starttime']
+
+    print
+    doinfo('Session completed in %s. Exiting.' % (configopts['totalruntime']))
 
     if configopts['udpmatches'] > 0 or configopts['tcpmatches'] > 0: sys.exit(0)
     else: sys.exit(1)
@@ -28,31 +32,32 @@ def dumpmatchstats():
             print
         writepackets()
 
-    print
-    print '[U] Processed: %d | Matches: %d' % (configopts['inspudppacketct'], configopts['udpmatches']),
-    if configopts['udpmatches'] > 0:
-        print '[Shortest: %dB (#%d) | Longest: %dB (#%d)]' % (
-                    configopts['shortestmatch']['packet'],
-                    configopts['shortestmatch']['packetid'],
-                    configopts['longestmatch']['packet'],
-                    configopts['longestmatch']['packetid'])
-    else:
+    if configopts['verbose'] and configopts['verboselevel'] >= 3:
         print
 
-    print '[T] Processed: %d | Matches: %d' % (configopts['insptcpstreamct'], configopts['tcpmatches']),
-    if configopts['tcpmatches'] > 0:
-        print '[Shortest: %dB (#%d) | Longest: %dB (#%d)]' % (
-                    configopts['shortestmatch']['stream'],
-                    configopts['shortestmatch']['streamid'],
-                    configopts['longestmatch']['stream'],
-                    configopts['longestmatch']['streamid'])
-    else:
+    if 'quite' in configopts['outmodes']:
         print
+
+    doinfo('UDP Stats: { Processed: %d, Matched: %d } { Shortest: %dB (#%d), Longest: %dB (#%d) }' % (
+                configopts['inspudppacketct'],
+                configopts['udpmatches'],
+                configopts['shortestmatch']['packet'],
+                configopts['shortestmatch']['packetid'],
+                configopts['longestmatch']['packet'],
+                configopts['longestmatch']['packetid']))
+
+    doinfo('TCP Stats: { Processed: %d, Matches: %d } { Shortest: %dB (#%d), Longest: %dB (#%d) }' % (
+                configopts['insptcpstreamct'],
+                configopts['tcpmatches'],
+                configopts['shortestmatch']['stream'],
+                configopts['shortestmatch']['streamid'],
+                configopts['longestmatch']['stream'],
+                configopts['longestmatch']['streamid']))
 
 
 def dumpopenstreams():
     if len(openudpflows) > 0:
-        print '[DEBUG] Dumping open/tracked UDP streams: %d' % (len(openudpflows))
+        doinfo('Dumping open/tracked UDP streams: %d' % len(openudpflows))
 
         for (key, value) in openudpflows.items():
             id = value['id']
@@ -61,18 +66,19 @@ def dumpopenstreams():
             ctsdatasize = value['ctsdatasize']
             stcdatasize = value['stcdatasize']
             totdatasize = value['totdatasize']
-            print '[DEBUG] [%08d] %s - %s (CTS: %dB | STC: %dB | TOT: %dB) [matches: %d]' % (
+            doinfo('[%08d] %s - %s { CTS: %dB, STC: %dB, TOT: %dB } { matches: %d }' % (
                     id,
                     key,
                     keydst,
                     ctsdatasize,
                     stcdatasize,
                     totdatasize,
-                    matches)
+                    matches),
+                    'DEBUG')
 
     if len(opentcpflows) > 0:
         print
-        print '[DEBUG] Dumping open/tracked TCP streams: %d' % (len(opentcpflows))
+        doinfo('Dumping open/tracked TCP streams: %d' % (len(opentcpflows)))
 
         for (key, value) in opentcpflows.items():
             id = value['id']
@@ -87,7 +93,7 @@ def dumpopenstreams():
                 stcdatasize += size
 
             totdatasize = ctsdatasize + stcdatasize
-            print '[DEBUG] [%08d] %s:%s - %s:%s (CTS: %dB | STC: %dB | TOT: %dB)' % (
+            doinfo('[%08d] %s:%s - %s:%s { CTS: %dB, STC: %dB, TOT: %dB }' % (
                     id,
                     src,
                     sport,
@@ -95,15 +101,15 @@ def dumpopenstreams():
                     dport,
                     ctsdatasize,
                     stcdatasize,
-                    totdatasize)
+                    totdatasize))
 
 
 def dumpippacketsdict():
     print
-    print '[DEBUG] Dumping IP packets dictionary: %d' % (len(ippacketsdict.keys()))
+    doinfo('Dumping IP packets dictionary: %d' % len(ippacketsdict.keys()))
     for key in ippacketsdict.keys():
         ((src, sport), (dst, dport)) = key
-        print '[DEBUG] [%s#%08d] %s:%s - %s:%s (Packets: %d | Matched: %s)' % (
+        doinfo('[%s#%08d] %s:%s - %s:%s { Packets: %d, Matched: %s}' % (
             ippacketsdict[key]['proto'],
             ippacketsdict[key]['id'],
             src,
@@ -111,18 +117,18 @@ def dumpippacketsdict():
             dst,
             dport,
             len(ippacketsdict[key].keys()) - configopts['ipmetavars'],
-            ippacketsdict[key]['matched'])
+            ippacketsdict[key]['matched']))
 
 
 def dumpargstats(configopts):
     if configopts['pcap']:
-        print '%-30s' % '[DEBUG] Input pcap:', ; print '[ %s ]' % (configopts['pcap'])
+        print '%-30s' % 'Input pcap:', ; print '[ %s ]' % (configopts['pcap'])
     elif configopts['device']:
-        print '%-30s' % '[DEBUG] Listening device:', ;print '[ %s ]' % (configopts['device']),
+        print '%-30s' % 'Listening device:', ;print '[ %s ]' % (configopts['device']),
         if configopts['killtcp']: print '[ w/ killtcp ]'
         else: print
 
-    print '%-30s' % '[DEBUG] Inspection Modes:', ;print '[',
+    print '%-30s' % 'Inspection Modes:', ;print '[',
     for mode in configopts['inspectionmodes']:
         if mode == 'regex': print 'regex (%s)' % (configopts['regexengine']),
         if mode == 'fuzzy': print 'fuzzy (%s)' % (configopts['fuzzengine']),
@@ -130,57 +136,57 @@ def dumpargstats(configopts):
     print ']'
 
     if 'regex' in configopts['inspectionmodes']:
-        print '%-30s' % '[DEBUG] CTS regex:', ; print '[ %d |' % (len(configopts['ctsregexes'])),
+        print '%-30s' % 'CTS regex:', ; print '[ %d |' % (len(configopts['ctsregexes'])),
         for c in configopts['ctsregexes']:
             print '%s' % configopts['ctsregexes'][c]['regexpattern'],
         print ']'
 
-        print '%-30s' % '[DEBUG] STC regex:', ; print '[ %d |' % (len(configopts['stcregexes'])),
+        print '%-30s' % 'STC regex:', ; print '[ %d |' % (len(configopts['stcregexes'])),
         for s in configopts['stcregexes']:
             print '%s' % configopts['stcregexes'][s]['regexpattern'],
         print ']'
 
-        print '%-30s' % '[DEBUG] RE stats:', ; print '[ Flags: %d (' % (configopts['reflags']),
+        print '%-30s' % 'RE stats:', ; print '[ Flags: %d (' % (configopts['reflags']),
         if configopts['igncase']: print 'ignorecase',
         if configopts['multiline']: print 'multiline',
         print ') ]'
 
     if 'fuzzy' in configopts['inspectionmodes']:
-        print '%-30s' % '[DEBUG] CTS fuzz patterns:', ; print '[ %d |' % (len(configopts['ctsfuzzpatterns'])),
+        print '%-30s' % 'CTS fuzz patterns:', ; print '[ %d |' % (len(configopts['ctsfuzzpatterns'])),
         for c in configopts['ctsfuzzpatterns']:
             print '%s' % (c),
         print ']'
 
-        print '%-30s' % '[DEBUG] STC fuzz patterns:', ; print '[ %d |' % (len(configopts['stcfuzzpatterns'])),
+        print '%-30s' % 'STC fuzz patterns:', ; print '[ %d |' % (len(configopts['stcfuzzpatterns'])),
         for s in configopts['stcfuzzpatterns']:
             print '%s' % (s),
         print ']'
 
     if 'yara' in configopts['inspectionmodes']:
-        print '%-30s' % '[DEBUG] CTS yara rules:', ; print '[ %d |' % (len(configopts['ctsyararules'])),
+        print '%-30s' % 'CTS yara rules:', ; print '[ %d |' % (len(configopts['ctsyararules'])),
         for c in configopts['ctsyararules']:
             print '%s' % (c),
         print ']'
 
-        print '%-30s' % '[DEBUG] STC yara rules:', ; print '[ %d |' % (len(configopts['stcyararules'])),
+        print '%-30s' % 'STC yara rules:', ; print '[ %d |' % (len(configopts['stcyararules'])),
         for s in configopts['stcyararules']:
             print '%s' % (s),
         print ']'
 
-    print '%-30s' % '[DEBUG] Inspection limits:',
+    print '%-30s' % 'Inspection limits:',
     print '[ Streams: %d | Packets: %d | Offset: %d | Depth: %d ]' % (
             configopts['maxinspstreams'],
             configopts['maxinsppackets'],
             configopts['offset'],
             configopts['depth'])
 
-    print '%-30s' % '[DEBUG] Display limits:',
+    print '%-30s' % 'Display limits:',
     print '[ Streams: %d | Packets: %d | Bytes: %d ]' % (
             configopts['maxdispstreams'],
             configopts['maxdisppackets'],
             configopts['maxdispbytes'])
 
-    print '%-30s' % '[DEBUG] Output modes:', ; print '[',
+    print '%-30s' % 'Output modes:', ; print '[',
     if 'quite' in configopts['outmodes']:
         print 'quite',
         if configopts['writelogs']: print 'write: %s' % (configopts['logdir']),
@@ -196,7 +202,7 @@ def dumpargstats(configopts):
         if configopts['writepcapfast']: print 'pcap: matched' + '%d packets' % (configopts['pcappacketct']),
     print ']'
 
-    print '%-30s' % '[DEBUG] Misc options:',
+    print '%-30s' % 'Misc options:',
     print '[ BPF: %s | invertmatch: %s | killtcp: %s | verbose: %s (%d) | linemode: %s | multimatch: %s ]' % (
             configopts['bpf'],
             configopts['invertmatch'],
@@ -205,4 +211,9 @@ def dumpargstats(configopts):
             configopts['verboselevel'],
             configopts['linemode'],
             configopts['tcpmultimatch'])
-    print
+
+    try:
+        print
+        print "Press any key to continue...",
+        input()
+    except: pass
