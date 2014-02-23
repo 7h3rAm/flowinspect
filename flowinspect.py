@@ -45,8 +45,6 @@ def main():
                                     /_/
     '''
 
-    sys.stdout = sys.__stdout__
-
     import re
     configopts['regexengine'] = 're'
 
@@ -350,20 +348,12 @@ def main():
                                     help='# of post match packets to write to pcap')
 
     misc_options.add_argument(
-                                    '-n',
-                                    dest='confirm',
-                                    default=False,
-                                    action='store_true',
-                                    required=False,
-                                    help='confirm before initializing NIDS')
-    misc_options.add_argument(
                                     '-L',
                                     dest='linemode',
                                     default=False,
                                     action='store_true',
                                     required=False,
                                     help='enable linemode (disables inspection)')
-
     misc_options.add_argument(
                                     '-B',
                                     dest='nobanner',
@@ -371,7 +361,6 @@ def main():
                                     action='store_true',
                                     required=False,
                                     help='skip banner/version display on startup')
-
     misc_options.add_argument(
                                     '-S',
                                     dest='nosummary',
@@ -379,10 +368,15 @@ def main():
                                     action='store_true',
                                     required=False,
                                     help='skip match summary display at exit')
+    misc_options.add_argument(
+                                    '-n',
+                                    dest='dumpargs',
+                                    default=False,
+                                    action='store_true',
+                                    required=False,
+                                    help='show argument stats')
 
     args = parser.parse_args()
-    sys.stdout = NullDevice()
-    sys.stdout = sys.__stdout__
 
     if args.pcap:
         configopts['pcap'] = args.pcap
@@ -613,7 +607,7 @@ def main():
         configopts['killtcp'] = False
         configopts['livemode'] = False
 
-    if configopts['verbose'] and configopts['verboselevel'] >= 1:
+    if args.dumpargs:
         dumpargstats(configopts)
 
     try:
