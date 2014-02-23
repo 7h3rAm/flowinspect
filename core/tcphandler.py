@@ -413,19 +413,20 @@ def showtcpmatches(data):
                 regexpattern = configopts['stcregexes'][matchstats['regex']]['regexpattern']
 
             metastr = 'matches regex%s: \'%s\'' % (invertstatus, regexpattern)
-            packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
+
+        elif matchstats['detectiontype'] == 'fuzzy':
+            metastr = 'matches \'%s\' %s%s' % (matchstats['fuzzpattern'], matchstats['fuzzmatchdetails'], invertstatus)
 
         elif matchstats['detectiontype'] == 'shellcode':
             metastr = 'contains shellcode [Offset: %d]%s' % (matchstats['shellcodeoffset'], invertstatus)
-            packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
 
         elif matchstats['detectiontype'] == 'yara':
             metastr = 'matches rule: \'%s\' from %s' % (matchstats['yararulename'], matchstats['yararulefilepath'])
-            packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
 
         else:
             metastr = ''
-            packetstats = ''
+
+        packetstats = ' | packet[%d] - packet[%d]' % (startpacket, endpacket)
 
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
             bpfstr = generate_bpf("TCP", src, sport, directionflag, dst, dport)

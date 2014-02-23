@@ -38,7 +38,7 @@ def dumpmatchstats():
     if 'quite' in configopts['outmodes']:
         print
 
-    doinfo('UDP Stats: { Processed: %d, Matched: %d } { Shortest: %dB (#%d), Longest: %dB (#%d) }' % (
+    doinfo('UDP Stats: { Processed: %d, Matched: %d { Shortest: %dB (#%d), Longest: %dB (#%d) }}' % (
                 configopts['inspudppacketct'],
                 configopts['udpmatches'],
                 configopts['shortestmatch']['packet'],
@@ -46,7 +46,7 @@ def dumpmatchstats():
                 configopts['longestmatch']['packet'],
                 configopts['longestmatch']['packetid']))
 
-    doinfo('TCP Stats: { Processed: %d, Matches: %d } { Shortest: %dB (#%d), Longest: %dB (#%d) }' % (
+    doinfo('TCP Stats: { Processed: %d, Matched: %d { Shortest: %dB (#%d), Longest: %dB (#%d) }}' % (
                 configopts['insptcpstreamct'],
                 configopts['tcpmatches'],
                 configopts['shortestmatch']['stream'],

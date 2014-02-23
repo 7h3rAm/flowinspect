@@ -8,7 +8,6 @@
     [x] span offsets don't include custom offset (2 instead of 1002)
     [ ] ip flow tracking should be in sync with tcp flow tracking
     [ ] direction identification for UDP flows needs more work
-    [ ] dfa graph should be generated independent of match status
     [ ] multimatch offsets are incorrect for ANY direction
     [ ] -y should accept path
     [ ] -z and -Z should accept path
@@ -18,6 +17,6 @@
     [ ] merge show{tcp, udp}matches if appropriate
     [ ] code cleanup {delete object when done using, remove duplicate/unnecessary objects, ...}
     [x] multimatch not working with yara
-    [ ] packet offset not shown for fuzzy match
-    [ ] fuzzy match ratio not shown in meta output
+    [x] packet offset not shown for fuzzy match
+    [x] fuzzy match ratio not shown in meta output
     [ ] packet count fails when yara gives multiple matches

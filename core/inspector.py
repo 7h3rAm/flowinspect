@@ -133,6 +133,8 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                     matchstr = 'doesnot match'
                     matchreason = '<'
 
+            fuzzmatchdetails = "(ratio: %d %s threshold: %d)" % (partialratio, matchreason, configopts['fuzzminthreshold'])
+
             if configopts['verbose'] and configopts['verboselevel'] >= 2:
                 dodebug('[%s#%08d] %s:%s %s %s:%s %s \'%s\' (ratio: %d %s threshold: %d)' % (
                         proto,
@@ -154,6 +156,7 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 matchstats['start'] = 0
                 matchstats['end'] = datalen
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
+                matchstats['fuzzmatchdetails'] = fuzzmatchdetails
                 return True
 
     if 'shellcode' in configopts['inspectionmodes']:
