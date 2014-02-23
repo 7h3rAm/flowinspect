@@ -2,7 +2,6 @@
     [x] network/pcap based flow extraction (pynids)
     [x] tcp.kill
     [x] invert match
-    [ ] prefer re2 over re
     [x] ignore 0 byte matches
     [x] disable inspection - linemode
     [x] support for multiple patterns
@@ -13,27 +12,36 @@
     [x] stats (longest/shortest match and packet/stream #)
     [x] stop tracking a stream when a match is found (tcp.collect = 0)
     [x] cli to switch the first-match behavior
-    [ ] shellcode inspection should be CTS/STC/ANY
     [x] inspection modes:
         [x] regex
-        [x] dfa
-            [x] pydfa
-            [x] dfa state machine graph
-            [x] boolean expression parser
         [x] pylibemu
             [x] libemu profile output
             [x] libemu memory size cli
         [x] pyyara (peid/clamav)
         [x] fuzzy match (fuzzywuzzy)
-    [ ] boolean parser for all modes
-    [ ] combination of inspection modes
+        [ ] hash (ssdeep/md5/sha/...)
+        [ ] ip reputation
+        [ ] js deobfuscation analysis
+        [ ] file format validity (PDF/Flash/Jar/OLE/audio/video/...)
+        [ ] pefile/elffile/peepdf/...
+        [ ] clamav/virustotal/anubis/wepawet/jsunpack/threatxpert
+        [ ] TaintDroid/DroidBox/Androguard/apktool
+    [x] udp stream tracking (cts/stc/any)
+    [x] show matching tcp packet ids (handy when pattern spans many packets)
     [x] write matching flows to pcap
         [x] write all packets in a matched flow (ones coming after match as well)
         [x] write packets seen only untill the match happened (+a few more)
-    [x] udp stream tracking (cts/stc/any)
-    [x] show matching tcp packet ids (handy when pattern spans many packets)
     [x] ip/tcp/udp header checks - via BPF
     [x] use colors if term supports
-    [ ] sequence diagram for matched streams (nodes, data flow, packet ids, streamids, data size, ...)
     [x] verbose should be incremental
     [x] include bpf expression for matching flows (verbose >= 3)
+    [ ] sequence diagram for matched streams (nodes, data flow, packet ids, streamids, data size, ...)
+    [ ] shellcode inspection should be CTS/STC/ANY
+    [ ] prefer re2 over re
+    [ ] boolean parser for all modes
+    [ ] combination of inspection modes
+    [ ] timetamped (non)debug output
+    [ ] file extraction over HTTP/SMTP/IMAP/POP3/FTP/TFTP/...
+    [ ] ssl decryption via user certificates
+    [ ] configuration file support
+    [ ] enable logging support
