@@ -6,8 +6,8 @@
     [x] make dfa memberids optional
     [x] nonzero offset corrupts packet span calculation
     [x] span offsets don't include custom offset (2 instead of 1002)
-    [ ] ip flow tracking should be in sync with tcp flow tracking
-    [ ] direction identification for UDP flows needs more work
+    [x] ip flow tracking should be in sync with tcp flow tracking
+    [x] direction identification for UDP flows needs more work
     [ ] multimatch offsets are incorrect for ANY direction
     [ ] -y should accept path
     [ ] -z and -Z should accept path

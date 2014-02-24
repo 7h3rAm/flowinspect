@@ -9,6 +9,13 @@ from utils import getcurtime, printdict, writepackets, doinfo, dodebug, dowarn, 
 import sys
 
 
+def isudpcts(addr):
+    ((src, sport), (dst, dport)) = addr
+
+    if dport <= 1024 and sport >= 1024: return True
+    else: return False
+
+
 def doexit():
     configopts['endtime'] = getcurtime()
     configopts['totalruntime'] = configopts['endtime'] - configopts['starttime']

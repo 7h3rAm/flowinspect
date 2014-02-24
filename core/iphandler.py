@@ -1,10 +1,9 @@
 # nids callback handler for ip packets
 # collects ip payload if pcap write is requested
+# also tracks tcp/udp flows (populates flow entry tables)
 
-import datetime, nids
-from globals import configopts, openudpflows, matchstats, ippacketsdict
-from inspector import inspect
-from utils import getregexpattern, hexdump, printable, writepackets, doinfo, dodebug, dowarn, doerror
+from globals import configopts, openudpflows, opentcpflows, matchstats, ippacketsdict
+from utils import doinfo, dodebug, dowarn, doerror
 
 import sys, socket
 from struct import unpack
@@ -145,8 +144,27 @@ def handleip(pkt):
             else:
                 return
 
-        if configopts['verbose'] and configopts['verboselevel'] >= 4:
-            dodebug('[IP] %s:%s %s %s:%s TCP { %sflags: %s, seq: %d, ack: %d, win: %d, len: %dB }' % (
+        # if this is a new tcp stream, add it to the opentcpflows table
+        addrkey = ((ipsrc, tcpsport), (ipdst, tcpdport))
+        if tcpflagsstr == 'S' and addrkey not in opentcpflows:
+            configopts['ipflowsct'] += 1
+            configopts['streamct'] += 1
+            opentcpflows.update({addrkey:{
+                                            'ipct': configopts['ipflowsct'],
+                                            'id': configopts['streamct'],
+                                            'totdatasize': 0,
+                                            'insppackets': 0,
+                                            'multimatchskipoffset': 0,
+                                            'ctspacketlendict': {},
+                                            'stcpacketlendict': {},
+                                        }
+                                })
+
+
+        if configopts['verbose'] and configopts['verboselevel'] >= 4 and addrkey in opentcpflows:
+            dodebug('[IP#%d.TCP#%d] %s:%s %s %s:%s { %sflags: %s, seq: %d, ack: %d, win: %d, len: %dB }' % (
+                    opentcpflows[addrkey]['ipct'],
+                    opentcpflows[addrkey]['id'],
                     ipsrc,
                     tcpsport,
                     configopts['ctsdirectionflag'],
@@ -245,11 +263,35 @@ def handleip(pkt):
                                             }
                 pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
 
-        if configopts['verbose'] and configopts['verboselevel'] >= 4:
-            dodebug('[IP] %s:%s > %s:%s UDP { %slen: %dB }' % (
-                    ipsrc,
-                    udpsport,
-                    ipdst,
-                    udpdport,
-                    pktstats,
-                    len(data)))
+
+        keya = "%s:%s" % (ipsrc, udpsport)
+        keyb = "%s:%s" % (ipdst, udpdport)
+        if udpdport <= 1024 and udpsport >= 1024:
+            key = keya
+            keydst = keyb
+        else:
+            key = keyb
+            keydst = keya
+
+        if key not in openudpflows:
+            configopts['ipflowsct'] += 1
+            configopts['packetct'] += 1
+            openudpflows.update({ key:{
+                                            'ipct': configopts['ipflowsct'],
+                                            'id':configopts['packetct'],
+                                            'keydst':keydst,
+                                            'matches':0,
+                                            'ctsdatasize':0,
+                                            'stcdatasize':0,
+                                            'totdatasize':0,
+                                        }
+                                    })
+
+        if configopts['verbose'] and configopts['verboselevel'] >= 4 and key in openudpflows:
+            dodebug('[IP#%d.UDP#%d] %s %s %s [%dB]' % (
+                        openudpflows[key]['ipct'],
+                        openudpflows[key]['id'],
+                        key,
+                        configopts['ctsdirectionflag'],
+                        keydst,
+                        len(data)))

@@ -59,6 +59,7 @@ configopts = {
     'insptcpstreamct': 0,
     'inspudppacketct': 0,
     'invertmatch': False,
+    'ipflowsct': 0,
     'ipmetavars': 4,
 
     'killtcp': False,
