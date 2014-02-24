@@ -146,6 +146,8 @@ def handleip(pkt):
 
         # if this is a new tcp stream, add it to the opentcpflows table
         addrkey = ((ipsrc, tcpsport), (ipdst, tcpdport))
+        tmpaddrkey = ((ipdst, tcpdport), (ipsrc, tcpsport))
+
         if tcpflagsstr == 'S' and addrkey not in opentcpflows:
             configopts['ipflowsct'] += 1
             configopts['streamct'] += 1
@@ -160,11 +162,25 @@ def handleip(pkt):
                                         }
                                 })
 
+        count = len(data)
+        if addrkey in opentcpflows:
+            # this tcp/ip packet is travelling from CTS direction
+            opentcpflows[addrkey]['insppackets'] += 1
+            opentcpflows[addrkey]['ctspacketlendict'].update({ opentcpflows[addrkey]['insppackets']:count })
+            key = addrkey
+        elif tmpaddrkey in opentcpflows:
+            # this tcp/ip packet is travelling from STC direction
+            opentcpflows[tmpaddrkey]['insppackets'] += 1
+            opentcpflows[tmpaddrkey]['stcpacketlendict'].update({ opentcpflows[tmpaddrkey]['insppackets']:count })
+            key = tmpaddrkey
+        else:
+            # this ip flow is untracked, let's not care about it
+            key = None
 
-        if configopts['verbose'] and configopts['verboselevel'] >= 4 and addrkey in opentcpflows:
+        if configopts['verbose'] and configopts['verboselevel'] >= 4 and key in opentcpflows:
             dodebug('[IP#%d.TCP#%d] %s:%s %s %s:%s { %sflags: %s, seq: %d, ack: %d, win: %d, len: %dB }' % (
-                    opentcpflows[addrkey]['ipct'],
-                    opentcpflows[addrkey]['id'],
+                    opentcpflows[key]['ipct'],
+                    opentcpflows[key]['id'],
                     ipsrc,
                     tcpsport,
                     configopts['ctsdirectionflag'],

@@ -8,7 +8,7 @@
     [x] span offsets don't include custom offset (2 instead of 1002)
     [x] ip flow tracking should be in sync with tcp flow tracking
     [x] direction identification for UDP flows needs more work
-    [ ] multimatch offsets are incorrect for ANY direction
+    [x] multimatch offsets are incorrect for ANY direction
     [ ] -y should accept path
     [ ] -z and -Z should accept path
     [x] cli to disable banner/summary
@@ -19,4 +19,4 @@
     [x] multimatch not working with yara
     [x] packet offset not shown for fuzzy match
     [x] fuzzy match ratio not shown in meta output
-    [ ] packet count fails when yara gives multiple matches
+    [x] packet count fails when yara gives multiple matches

@@ -233,13 +233,6 @@ def handletcp(tcp):
                     depth,
                     inspdatalen))
 
-        opentcpflows[addrkey]['insppackets'] += 1
-
-        if direction == configopts['ctsdirectionstring']:
-            opentcpflows[addrkey]['ctspacketlendict'].update({ opentcpflows[addrkey]['insppackets']:count })
-        elif direction == configopts['stcdirectionstring']:
-            opentcpflows[addrkey]['stcpacketlendict'].update({ opentcpflows[addrkey]['insppackets']:count })
-
         matched = inspect('TCP', inspdata, inspdatalen, regexes, fuzzpatterns, yararuleobjects, addrkey, direction, directionflag)
 
         if matched:
@@ -411,13 +404,33 @@ def showtcpmatches(data):
         end = matchstats['end']
         matchsize = matchstats['matchsize']
 
-        for (pktid, pktlen) in collections.OrderedDict(sorted(packetlendict.items())).items():
-            if startpacket == 0 and (matchstats['start'] + configopts['inspoffset']) < pktlen:
-                startpacket = pktid
-            endpacket = pktid
+        totalcount = 0
+        startpacket = 0
+        endpacket = 0
+        if len(packetlendict) == 1:
+            startpacket = packetlendict.keys()[0]
+            endpacket = startpacket
+        else:
+            for (pktid, pktlen) in collections.OrderedDict(sorted(packetlendict.items())).items():
+                totalcount += pktlen
 
-        if startpacket > endpacket:
-            startpacket, endpacket = endpacket, startpacket
+                if start <= totalcount and startpacket == 0 and pktlen != 0:
+                    startpacket = pktid
+
+                if end <= totalcount:
+                    endpacket = pktid
+
+                if configopts['verbose'] and configopts['verboselevel'] >= 3:
+                    dodebug('(%06d:%06d) start:%d <= totalcount:%06d | end:%d <= totalcount:%06d ... %s|%-5s\t' % (
+                                pktid, pktlen, start, totalcount, end, totalcount, (start <= totalcount), (end <= totalcount)))
+
+                if endpacket != 0:
+                    if configopts['verbose'] and configopts['verboselevel'] >= 3:
+                        dodebug('startpacket: %d - endpacket: %d' % (startpacket, endpacket))
+                    break
+
+            if startpacket > endpacket:
+                startpacket, endpacket = endpacket, startpacket
 
         if matchstats['detectiontype'] == 'regex':
             if direction == configopts['ctsdirectionstring']:

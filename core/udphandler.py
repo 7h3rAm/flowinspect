@@ -49,13 +49,14 @@ def handleudp(addr, payload, pkt):
     if key in openudpflows and openudpflows[key]['keydst'] == keydst:
         openudpflows[key]['totdatasize'] += count
     else:
-        dodebug('[IP#%d.UDP#%d] %s:%s - %s:%s remains untracked { IP tracking missed this flow }' % (
-                    openudpflows[key]['ipct'],
-                    opentcpflows[addrkey]['id'],
-                    src,
-                    sport,
-                    dst,
-                    dport))
+        if configopts['verbose'] and configopts['verboselevel'] >= 3:
+            dodebug('[IP#%d.UDP#%d] %s:%s - %s:%s remains untracked { IP tracking missed this flow }' % (
+                        openudpflows[key]['ipct'],
+                        openudpflows[key]['id'],
+                        src,
+                        sport,
+                        dst,
+                        dport))
 
     regexes = []
     fuzzpatterns = []
