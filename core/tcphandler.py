@@ -359,6 +359,8 @@ def showtcpmatches(data):
                 pattern = configopts['ctsfuzzpatterns']
             else:
                 pattern = configopts['stcfuzzpaterns']
+        else:
+            pattern = None
 
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
             dodebug('[IP#%d.TCP#%d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (

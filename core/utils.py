@@ -20,7 +20,7 @@ def doprint(msg, level='INFO', back=0):
     filename = os.path.basename(frame.f_code.co_filename)
     lineno = frame.f_lineno
     funcname = frame.f_code.co_name
-    print "[%s] [%s:%s] %s" % (gettimestamp(), level, funcname, msg)
+    print "[%s] [%s] %s: %s" % (gettimestamp(), funcname, level, msg)
 
 
 # print info messages

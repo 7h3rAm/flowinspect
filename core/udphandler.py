@@ -136,8 +136,7 @@ def handleudp(addr, payload, pkt):
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
             dodebug('[IP#%d.UDP#%d] Skipping inspection as linemode is enabled.' % (
                         openudpflows[key]['ipct'],
-                        openudpflows[key]['id'],
-                        configopts['packetct']))
+                        openudpflows[key]['id']))
         showudpmatches(data[matchstats['start']:matchstats['end']])
 
         if configopts['writepcap']:
@@ -249,6 +248,11 @@ def showudpmatches(data):
                     dport))
 
     if 'quite' in configopts['outmodes']:
+        if matchstats['regex']:
+            pattern = getregexpattern(matchstats['regex'])
+        else:
+            pattern = None
+
         if configopts['verbose'] and configopts['verboselevel'] >= 3:
             dodebug('[IP#%d.UDP#%d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
                     openudpflows[key]['ipct'],
@@ -258,7 +262,7 @@ def showudpmatches(data):
                     matchstats['directionflag'],
                     dst,
                     dport,
-                    getregexpattern(matchstats['regex']),
+                    pattern,
                     matchstats['start'],
                     matchstats['end'],
                     matchstats['matchsize']))
