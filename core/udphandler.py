@@ -352,6 +352,15 @@ def showudpmatches(data):
         else:
             hexdump(data[:maxdispbytes], None)
 
+    if configopts['asm4shellcode']:
+        print
+        if configopts['verbose'] and configopts['verboselevel'] >= 3:
+             dodebug('[IP#%d.UDP#%d] Generating disassembled output for %dB of detected shellcode' % (
+                        openudpflows[key]['ipct'],
+                        openudpflows[key]['id'],
+                        len(data)))
+        dumpasm(data)
+
     configopts['dispstreamct'] += 1
 
     if not configopts['colored']:

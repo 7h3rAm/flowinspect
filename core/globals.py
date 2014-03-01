@@ -26,6 +26,11 @@ matchstats = {
 }
 
 configopts = {
+
+    'asm4shellcode': False,
+    'asmfillchar': '.',
+    'asmopcodesize': 28,
+
     'author': 'Ankur Tyagi (7h3rAm)',
 
     'bpf': None,

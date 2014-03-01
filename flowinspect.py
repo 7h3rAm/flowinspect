@@ -179,6 +179,13 @@ def main():
                                     required=False,
                                     help='enable shellcode detection')
     shellcode_options.add_argument(
+                                    '-J',
+                                    dest='asm4shellcode',
+                                    default=False,
+                                    action='store_true',
+                                    required=False,
+                                    help='enable shellcode disassembly')
+    shellcode_options.add_argument(
                                     '-y',
                                     dest='emuprofile',
                                     default=False,
@@ -526,6 +533,13 @@ def main():
     if configopts['shellcodeengine']:
         if args.shellcode:
             configopts['inspectionmodes'].append('shellcode')
+
+    if args.asm4shellcode:
+        try:
+            import pydasm
+            configopts['asm4shellcode'] = True
+        except ImportError, ex:
+            dowarn('Import failed: %s' % ex)
 
     if args.emuprofile:
         configopts['emuprofile'] = True

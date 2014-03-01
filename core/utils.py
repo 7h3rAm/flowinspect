@@ -4,6 +4,11 @@ from globals import configopts, ippacketsdict
 import sys, os, pickle, collections, json, struct, binascii, random, re, time, datetime, inspect
 
 
+# when stdout has to be mute'd
+class NullDevice():
+    def write(self, s): pass
+
+
 # get current timestamp
 def getcurtime():
     return datetime.datetime.now()
@@ -43,9 +48,36 @@ def doerror(msg):
     doprint(msg, 'ERROR', back=1)
 
 
-# when stdout has to be mute'd
-class NullDevice():
-    def write(self, s): pass
+# dump assembled instrs
+def dumpasm(data, opcodesize=configopts['asmopcodesize'], fillchar=configopts['asmfillchar']):
+
+    if not configopts['asm4shellcode']:
+        return
+
+    else:
+        import pydasm
+
+        offset = 0
+
+        while offset < len(data):
+            i = pydasm.get_instruction(data[offset:], pydasm.MODE_32)
+
+            if not i:
+                break
+            else:
+                j = 1
+                opcodes = ""
+                buf = data[offset:(offset + i.length)]
+
+                for c in buf:
+                    opcodes = opcodes + str("%02x " % (ord(c)))
+
+                print "[0x%08x] (%02dB) %s %s" % (offset,
+                    i.length,
+                    opcodes.ljust(opcodesize, fillchar),
+                    pydasm.get_instruction_string(i, pydasm.FORMAT_INTEL, 0))
+
+            offset += i.length
 
 
 # generate bpf from a tcp/udp flow

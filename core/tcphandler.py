@@ -4,7 +4,7 @@
 import datetime, collections, nids
 from globals import configopts, opentcpflows, matchstats, ippacketsdict
 from inspector import inspect
-from utils import generate_bpf, getregexpattern, hexdump, printable, writetofile, writepackets, doinfo, dodebug, dowarn, doerror
+from utils import generate_bpf, getregexpattern, hexdump, printable, writetofile, writepackets, doinfo, dodebug, dowarn, doerror, dumpasm
 
 
 try:
@@ -509,6 +509,15 @@ def showtcpmatches(data):
                 hexdump(data[:maxdispbytes], configopts['stcoutcolor'])
         else:
             hexdump(data[:maxdispbytes], None)
+
+    if configopts['asm4shellcode']:
+        print
+        if configopts['verbose'] and configopts['verboselevel'] >= 3:
+            dodebug('[IP#%d.TCP#%d] Generating disassembled output for %dB of detected shellcode' % (
+                        opentcpflows[matchstats['addr']]['ipct'],
+                        opentcpflows[matchstats['addr']]['id'],
+                        len(data)))
+        dumpasm(data)
 
     configopts['dispstreamct'] += 1
 

@@ -6,7 +6,7 @@
 
 import sys, nids
 from globals import configopts, opentcpflows, openudpflows, matchstats
-from utils import printdict, hexdump, doinfo, dodebug, dowarn, doerror
+from utils import printdict, hexdump, doinfo, dodebug, dowarn, doerror, dumpasm
 
 
 def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrkey, direction, directionflag):
