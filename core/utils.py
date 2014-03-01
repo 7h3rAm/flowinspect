@@ -28,6 +28,11 @@ def doprint(msg, level='INFO', back=0):
     print "[%s] [%s] %s: %s" % (gettimestamp(), funcname, level, msg)
 
 
+# print norm messages
+def donorm(msg):
+    doprint(msg, 'NORM', back=1)
+
+
 # print info messages
 def doinfo(msg):
     doprint(msg, 'INFO', back=1)
@@ -111,7 +116,7 @@ def writepackets():
                     packets += 1
             pcapwriter(pcapfile, pktlist)
             if configopts['verbose'] and configopts['verboselevel'] >= 1:
-                print '[DEBUG] writepackets - Wrote %d packets to %s' % (packets, pcapfile)
+                doinfo('Wrote %d packets to %s' % (packets, pcapfile))
             del ippacketsdict[key]
 
 
@@ -172,7 +177,8 @@ def writetofile(filename, data):
         if configopts['linemode']: file = open(filename, 'ab+')
         else: file = open(filename, 'wb+')
         file.write(data)
-    except IOError, io: print '[-] writetofile - %s' % io
+    except IOError, io:
+        dowarn('Writing to file failed: %s' % io)
 
 
 # sort and print a dict

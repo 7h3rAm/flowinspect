@@ -40,8 +40,8 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 id = openudpflows[key]['id']
                 addrkey = dkey
 
-    if configopts['verbose'] and configopts['verboselevel'] >= 2:
-        dodebug('[IP#%d.%s#%d] Received %dB for inspection from %s:%s %s %s:%s' % (
+    if configopts['verbose'] and configopts['verboselevel'] >= 1:
+        doinfo('[IP#%d.%s#%d] Received %dB for inspection from %s:%s %s %s:%s' % (
                 ipct,
                 proto,
                 id,
@@ -67,8 +67,8 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 matchstats['start'] = matchstats['match'].start()
                 matchstats['end'] = matchstats['match'].end()
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
-                if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                    dodebug('[IP#%d.%s#%d] %s:%s %s %s:%s matches regex: \'%s\'' % (
+                if configopts['verbose'] and configopts['verboselevel'] >= 1:
+                    doinfo('[IP#%d.%s#%d] %s:%s %s %s:%s matches regex: \'%s\'' % (
                             ipct,
                             proto,
                             id,
@@ -86,8 +86,8 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 matchstats['start'] = 0
                 matchstats['end'] = datalen
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
-                if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                    dodebug('[IP#%d.%s#%d] %s:%s %s %s:%s matches regex (invert): \'%s\'' % (
+                if configopts['verbose'] and configopts['verboselevel'] >= 1:
+                    doinfo('[IP#%d.%s#%d] %s:%s %s %s:%s matches regex (invert): \'%s\'' % (
                             ipct,
                             proto,
                             id,
@@ -99,13 +99,13 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                             regexpattern))
                 return True
 
-            if configopts['verbose'] and configopts['verboselevel'] >= 2:
+            if configopts['verbose'] and configopts['verboselevel'] >= 1:
                 if configopts['invertmatch']:
                     invertstatus = " (invert)"
                 else:
                     invertstatus = ""
 
-                dodebug('[IP#%d.%s#%d] %s:%s %s %s:%s did not match regex%s: \'%s\'' % (
+                doinfo('[IP#%d.%s#%d] %s:%s %s %s:%s did not match regex%s: \'%s\'' % (
                         ipct,
                         proto,
                         id,
@@ -142,8 +142,8 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
             fuzzmatchdetails = "(ratio: %d %s threshold: %d)" % (partialratio, matchreason, configopts['fuzzminthreshold'])
 
-            if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                dodebug('[IP#%d.%s#%d] %s:%s %s %s:%s %s \'%s\' (ratio: %d %s threshold: %d)' % (
+            if configopts['verbose'] and configopts['verboselevel'] >= 1:
+                doinfo('[IP#%d.%s#%d] %s:%s %s %s:%s %s \'%s\' (ratio: %d %s threshold: %d)' % (
                         ipct,
                         proto,
                         id,
@@ -204,8 +204,8 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
             matchstats['start'] = offset
             matchstats['end'] = datalen
             matchstats['matchsize'] = matchstats['end'] - matchstats['start']
-            if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                dodebug('[IP#%d.%s#%d] %s:%s %s %s:%s contains shellcode%s' % (
+            if configopts['verbose'] and configopts['verboselevel'] >= 1:
+                doinfo('[IP#%d.%s#%d] %s:%s %s %s:%s contains shellcode%s' % (
                         ipct,
                         proto,
                         id,
@@ -228,19 +228,19 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
 
                 data = emulator.emu_profile_output.decode('utf8')
 
-                if emulator.emu_profile_truncated and configopts['verbose'] and configopts['verboselevel'] >= 2:
-                    dodebug('[IP#%d.%s#%d] Skipping emulator profile output generation as its truncated' % (ipct, proto, id))
+                if emulator.emu_profile_truncated and configopts['verbose'] and configopts['verboselevel'] >= 1:
+                    doinfo('[IP#%d.%s#%d] Skipping emulator profile output generation as its truncated' % (ipct, proto, id))
                 else:
                     fo = open(filename, 'w')
                     fo.write(data)
                     fo.close()
-                    if configopts['verbose'] and configopts['verboselevel'] >= 2:
-                        dodebug('[IP#%d.%s#%d] Wrote %d byte emulator profile output to %s' % (ipct, proto, id, len(data), filename))
+                    if configopts['verbose'] and configopts['verboselevel'] >= 1:
+                        doinfo('[IP#%d.%s#%d] Wrote %d byte emulator profile output to %s' % (ipct, proto, id, len(data), filename))
 
             return True
 
-        if configopts['verbose'] and configopts['verboselevel'] >= 2:
-            dodebug('[IP#%d.%s#%d] %s:%s %s %s:%s doesnot contain shellcode%s' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
+            doinfo('[IP#%d.%s#%d] %s:%s %s %s:%s doesnot contain shellcode%s' % (
                             ipct,
                             proto,
                             id,
@@ -283,13 +283,13 @@ def inspect(proto, data, datalen, regexes, fuzzpatterns, yararuleobjects, addrke
                 matchstats['matchsize'] = matchstats['end'] - matchstats['start']
                 return True
 
-            if configopts['verbose'] and configopts['verboselevel'] >= 2:
+            if configopts['verbose'] and configopts['verboselevel'] >= 1:
                 if ruleobj in configopts['ctsyararules']:
                     filepath = configopts['ctsyararules'][ruleobj]['filepath']
                 elif ruleobj in configopts['stcyararules']:
                     filepath = configopts['stcyararules'][ruleobj]['filepath']
 
-                dodebug('[IP#%d.%s#%d] %s:%s %s %s:%s doesnot match any rule in %s' % (
+                doinfo('[IP#%d.%s#%d] %s:%s %s %s:%s doesnot match any rule in %s' % (
                             ipct,
                             proto,
                             id,

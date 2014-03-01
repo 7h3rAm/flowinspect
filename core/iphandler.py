@@ -95,7 +95,7 @@ def handleip(pkt):
                     pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
                 else:
                     if (len(ippacketsdict[fivetuple]) - ipmetavars) == (ippacketsdict[fivetuple]['matchedid'] + configopts['pcappacketct']):
-                        if configopts['verbose'] and configopts['verboselevel'] >= 4:
+                        if configopts['verbose'] and configopts['verboselevel'] >= 2:
                             dodebug('Post match packet collection complete for %s:%s - %s:%s { matchpacket: %d, postpackets: +%d }' % (
                                     ipsrc,
                                     tcpsport,
@@ -117,7 +117,7 @@ def handleip(pkt):
                     pktstats = 'pktid: %d | ' % (len(ippacketsdict[revfivetuple]) - ipmetavars)
                 else:
                     if (len(ippacketsdict[revfivetuple]) - ipmetavars) == (ippacketsdict[revfivetuple]['matchedid'] + configopts['pcappacketct']):
-                        if configopts['verbose'] and configopts['verboselevel'] >= 4:
+                        if configopts['verbose'] and configopts['verboselevel'] >= 2:
                             dodebug('Post match packet collection complete for %s:%s - %s:%s { matchpacket: %d, postpackets: +%d }' % (
                                     ipsrc,
                                     tcpsport,
@@ -177,7 +177,7 @@ def handleip(pkt):
             # this ip flow is untracked, let's not care about it
             key = None
 
-        if configopts['verbose'] and configopts['verboselevel'] >= 4 and key in opentcpflows:
+        if configopts['verbose'] and configopts['verboselevel'] >= 2 and key in opentcpflows:
             dodebug('[IP#%d.TCP#%d] %s:%s %s %s:%s { %sflags: %s, seq: %d, ack: %d, win: %d, len: %dB }' % (
                     opentcpflows[key]['ipct'],
                     opentcpflows[key]['id'],
@@ -233,7 +233,7 @@ def handleip(pkt):
                     pktstats = 'pktid: %d | ' % (len(ippacketsdict[fivetuple]) - ipmetavars)
                 else:
                     if (len(ippacketsdict[fivetuple]) - ipmetavars) == (ippacketsdict[fivetuple]['matchedid'] + configopts['pcappacketct']):
-                        if configopts['verbose'] and configopts['verboselevel'] >= 4:
+                        if configopts['verbose'] and configopts['verboselevel'] >= 2:
                             dodebug('Post match packet collection complete for %s:%s - %s:%s { matchpacket: %d, postpackets: +%d }' % (
                                     ipsrc,
                                     udpsport,
@@ -255,7 +255,7 @@ def handleip(pkt):
                     pktstats = 'pktid: %d | ' % (len(ippacketsdict[revfivetuple]) - ipmetavars)
                 else:
                     if (len(ippacketsdict[revfivetuple]) - ipmetavars) == (ippacketsdict[revfivetuple]['matchedid'] + configopts['pcappacketct']):
-                        if configopts['verbose'] and configopts['verboselevel'] >= 4:
+                        if configopts['verbose'] and configopts['verboselevel'] >= 2:
                             dodebug('Post match packet collection complete for %s:%s - %s:%s { matchpacket: %d, postpackets: +%d }' % (
                                     ipsrc,
                                     udpsport,
@@ -303,7 +303,7 @@ def handleip(pkt):
                                         }
                                     })
 
-        if configopts['verbose'] and configopts['verboselevel'] >= 4 and key in openudpflows:
+        if configopts['verbose'] and configopts['verboselevel'] >= 2 and key in openudpflows:
             dodebug('[IP#%d.UDP#%d] %s %s %s [%dB]' % (
                         openudpflows[key]['ipct'],
                         openudpflows[key]['id'],

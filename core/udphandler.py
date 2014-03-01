@@ -4,7 +4,7 @@
 import datetime, nids
 from globals import configopts, openudpflows, matchstats, ippacketsdict
 from inspector import inspect
-from utils import generate_bpf, getregexpattern, hexdump, printable, writetofile, doinfo, dodebug, dowarn, doerror
+from utils import generate_bpf, getregexpattern, hexdump, printable, writetofile, donorm, doinfo, dodebug, dowarn, doerror, dumpasm
 
 
 try:
@@ -49,8 +49,8 @@ def handleudp(addr, payload, pkt):
     if key in openudpflows and openudpflows[key]['keydst'] == keydst:
         openudpflows[key]['totdatasize'] += count
     else:
-        if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            dodebug('[IP#%d.UDP#%d] %s:%s - %s:%s remains untracked { IP tracking missed this flow }' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
+            doinfo('[IP#%d.UDP#%d] %s:%s - %s:%s remains untracked { IP tracking missed this flow }' % (
                         openudpflows[key]['ipct'],
                         openudpflows[key]['id'],
                         src,
@@ -91,8 +91,8 @@ def handleudp(addr, payload, pkt):
             for yararuleobj in configopts['stcyararules']:
                 yararuleobjects.append(yararuleobj)
 
-    if configopts['verbose'] and configopts['verboselevel'] >= 3:
-        dodebug('[IP#%d.UDP#%d] %s %s %s [%dB] { TRACKED: %d } { CTS: %dB, STC: %dB, TOT: %dB }' % (
+    if configopts['verbose'] and configopts['verboselevel'] >= 1:
+        doinfo('[IP#%d.UDP#%d] %s %s %s [%dB] { TRACKED: %d } { CTS: %dB, STC: %dB, TOT: %dB }' % (
                 openudpflows[key]['ipct'],
                 openudpflows[key]['id'],
                 key,
@@ -107,15 +107,15 @@ def handleudp(addr, payload, pkt):
     if not configopts['linemode']:
         if configopts['udpdone']:
             if configopts['tcpdone']:
-                if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                    dodebug('Done inspecting max packets (%d) and max streams (%d), \
+                if configopts['verbose'] and configopts['verboselevel'] >= 1:
+                    doinfo('Done inspecting max packets (%d) and max streams (%d), \
                             preparing for exit' % (
                             configopts['maxinsppackets'],
                             configopts['maxinspstreams']))
                 exitwithstats()
             else:
-                if configopts['verbose'] and configopts['verboselevel'] >= 3:
-                    dodebug('Ignoring packet %s:%s %s %s:%s { inspudppacketct: %d == maxinsppackets: %d }' % (
+                if configopts['verbose'] and configopts['verboselevel'] >= 1:
+                    doinfo('Ignoring packet %s:%s %s %s:%s { inspudppacketct: %d == maxinsppackets: %d }' % (
                             src,
                             sport,
                             dst,
@@ -133,8 +133,8 @@ def handleudp(addr, payload, pkt):
         matchstats['matchsize'] = matchstats['end'] - matchstats['start']
         matchstats['direction'] = direction
         matchstats['directionflag'] = directionflag
-        if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            dodebug('[IP#%d.UDP#%d] Skipping inspection as linemode is enabled.' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
+            doinfo('[IP#%d.UDP#%d] Skipping inspection as linemode is enabled.' % (
                         openudpflows[key]['ipct'],
                         openudpflows[key]['id']))
         showudpmatches(data[matchstats['start']:matchstats['end']])
@@ -159,8 +159,8 @@ def handleudp(addr, payload, pkt):
     inspdata = data[offset:depth]
     inspdatalen = len(inspdata)
 
-    if configopts['verbose'] and configopts['verboselevel'] >= 3:
-        dodebug('[IP#%d.UDP#%d] Initiating inspection on %s[%d:%d] - %dB' % (
+    if configopts['verbose'] and configopts['verboselevel'] >= 1:
+        doinfo('[IP#%d.UDP#%d] Initiating inspection on %s[%d:%d] - %dB' % (
                 openudpflows[key]['ipct'],
                 openudpflows[key]['id'],
                 direction,
@@ -234,8 +234,8 @@ def showudpmatches(data):
     if configopts['writelogs']:
         writetofile(filename, data)
 
-        if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            dodebug('[IP#%d.UDP#%d] Wrote %dB to %s/%s-%08d.%s.%s.%s.%s' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
+            doinfo('[IP#%d.UDP#%d] Wrote %dB to %s/%s-%08d.%s.%s.%s.%s' % (
                     openudpflows[key]['ipct'],
                     openudpflows[key]['id'],
                     matchstats['matchsize'],
@@ -253,8 +253,8 @@ def showudpmatches(data):
         else:
             pattern = None
 
-        if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            dodebug('[IP#%d.UDP#%d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
+            doinfo('[IP#%d.UDP#%d] %s:%s %s %s:%s matches \'%s\' @ [%d:%d] - %dB' % (
                     openudpflows[key]['ipct'],
                     openudpflows[key]['id'],
                     src,
@@ -269,8 +269,8 @@ def showudpmatches(data):
         return
 
     if configopts['maxdisppackets'] != 0 and configopts['disppacketct'] >= configopts['maxdisppackets']:
-        if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            dodebug('Skipping outmode parsing { disppacketct: %d == maxdisppackets: %d }' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
+            doinfo('Skipping outmode parsing { disppacketct: %d == maxdisppackets: %d }' % (
                     configopts['disppacketct'],
                     configopts['maxdisppackets']))
         return
@@ -299,9 +299,9 @@ def showudpmatches(data):
         else:
             metastr = ''
 
-        if configopts['verbose'] and configopts['verboselevel'] >= 3:
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
              bpfstr = generate_bpf("UDP", src, sport, directionflag, dst, dport)
-             dodebug('[IP#%d.UDP#%d] BPF: %s' % (
+             doinfo('[IP#%d.UDP#%d] BPF: %s' % (
                 openudpflows[key]['ipct'],
                 openudpflows[key]['id'],
                 bpfstr))
@@ -354,8 +354,8 @@ def showudpmatches(data):
 
     if configopts['asm4shellcode']:
         print
-        if configopts['verbose'] and configopts['verboselevel'] >= 3:
-             dodebug('[IP#%d.UDP#%d] Generating disassembled output for %dB of detected shellcode' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
+             doinfo('[IP#%d.UDP#%d] Generating disassembled output for %dB of detected shellcode' % (
                         openudpflows[key]['ipct'],
                         openudpflows[key]['id'],
                         len(data)))
@@ -375,8 +375,8 @@ def markmatchedippackets(addrkey):
     if addrkey in ippacketsdict.keys() and ippacketsdict[addrkey]['proto'] == 'UDP':
         ippacketsdict[addrkey]['matched'] = True
         ippacketsdict[addrkey]['id'] = configopts['packetct']
-        if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            dodebug('[IP#%d.UDP#%d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
+            doinfo('[IP#%d.UDP#%d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
                             openudpflows[key]['ipct'],
                             openudpflows[key]['id'],
                             src,
@@ -387,8 +387,8 @@ def markmatchedippackets(addrkey):
     elif newaddrkey in ippacketsdict.keys() and ippacketsdict[newaddrkey]['proto'] == 'UDP':
         ippacketsdict[newaddrkey]['matched'] = True
         ippacketsdict[newaddrkey]['id'] = configopts['packetct']
-        if configopts['verbose'] and configopts['verboselevel'] >= 3:
-            dodebug('[IP#%d.UDP#%d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
+        if configopts['verbose'] and configopts['verboselevel'] >= 1:
+            doinfo('[IP#%d.UDP#%d] Flow %s:%s - %s:%s marked to be written to a pcap' % (
                             openudpflows[key]['ipct'],
                             openudpflows[key]['id'],
                             src,
@@ -396,8 +396,8 @@ def markmatchedippackets(addrkey):
                             dst,
                             dport))
 
-    elif configopts['verbose'] and configopts['verboselevel'] >= 3:
-        dodebug('[IP#%d.UDP#%d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
+    elif configopts['verbose'] and configopts['verboselevel'] >= 1:
+        doinfo('[IP#%d.UDP#%d] Flow %s:%s - %s:%s not found in ippacketsdict, something\'s wrong' % (
                             openudpflows[key]['ipct'],
                             openudpflows[key]['id'],
                             src,

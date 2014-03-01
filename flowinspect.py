@@ -21,7 +21,7 @@ from functions import dumpargstats, dumpmatchstats, doexit
 from tcphandler import handletcp
 from udphandler import handleudp
 from iphandler import handleip
-from utils import NullDevice, getcurtime, doinfo, dodebug, dowarn, doerror
+from utils import NullDevice, getcurtime, donorm, doinfo, dodebug, dowarn, doerror
 
 
 starttime=getcurtime()
@@ -309,7 +309,7 @@ def main():
                                     default=0,
                                     action='count',
                                     required=False,
-                                    help='verbose output')
+                                    help='verbose output (max: 3)')
     misc_options.add_argument(
                                     '-e',
                                     dest='colored',
@@ -574,8 +574,8 @@ def main():
     if args.verbose:
         configopts['verbose'] = True
         configopts['verboselevel'] = args.verbose
-        if configopts['verboselevel'] > 4:
-            configopts['verboselevel'] = 4
+        if configopts['verboselevel'] > 3:
+            configopts['verboselevel'] = 3
 
     if args.linemode:
         configopts['linemode'] = True
@@ -597,21 +597,21 @@ def main():
     if not configopts['inspectionmodes'] and not configopts['linemode']:
         configopts['linemode'] = True
         if configopts['verbose'] and configopts['verboselevel'] >= 1:
-            dodebug('Inspection disabled as no mode selected/available')
-            dodebug('Fallback - linemode enabled')
+            doinfo('Inspection disabled as no mode selected/available')
+            doinfo('Fallback - linemode enabled')
             print
 
     if configopts['writepcapfast'] and configopts['linemode']:
         configopts['writepcapfast'] = False
         configopts['writepcap'] = True
         if configopts['verbose'] and configopts['verboselevel'] >= 1:
-            dodebug('Fast pcap writing is incompatible with linemode. Using slow pcap writing as fallback.')
+            doinfo('Fast pcap writing is incompatible with linemode. Using slow pcap writing as fallback.')
 
     if configopts['writepcapfast'] and configopts['tcpmultimatch']:
         configopts['writepcapfast'] = False
         configopts['writepcap'] = True
         if configopts['verbose'] and configopts['verboselevel'] >= 1:
-            dodebug('Fast pcap writing is incompatible with multimatch. Using slow pcap writing as fallback.')
+            doinfo('Fast pcap writing is incompatible with multimatch. Using slow pcap writing as fallback.')
 
     if configopts['linemode']:
         configopts['offset'] = 0
@@ -633,7 +633,7 @@ def main():
         nids.register_udp(handleudp)
         nids.register_tcp(handletcp)
 
-        doinfo('NIDS initialized, waiting for events...')
+        donorm('NIDS initialized, waiting for events...')
         print
 
         try:

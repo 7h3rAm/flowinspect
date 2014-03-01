@@ -4,7 +4,7 @@ from globals import configopts, opentcpflows, openudpflows, ippacketsdict
 from tcphandler import handletcp
 from udphandler import handleudp
 from iphandler import handleip
-from utils import getcurtime, printdict, writepackets, doinfo, dodebug, dowarn, doerror
+from utils import getcurtime, printdict, writepackets, donorm, doinfo, dodebug, dowarn, doerror
 
 import sys
 
@@ -21,7 +21,7 @@ def doexit():
     configopts['totalruntime'] = configopts['endtime'] - configopts['starttime']
 
     print
-    doinfo('Session completed in %s. Exiting.' % (configopts['totalruntime']))
+    donorm('Session completed in %s. Exiting.' % (configopts['totalruntime']))
 
     if configopts['udpmatches'] > 0 or configopts['tcpmatches'] > 0: sys.exit(0)
     else: sys.exit(1)
@@ -39,13 +39,13 @@ def dumpmatchstats():
             print
         writepackets()
 
-    if configopts['verbose'] and configopts['verboselevel'] >= 3:
+    if configopts['verbose'] and configopts['verboselevel'] >= 1:
         print
 
     if 'quite' in configopts['outmodes']:
         print
 
-    doinfo('UDP Stats: { Processed: %d, Matched: %d { Shortest: %dB (#%d), Longest: %dB (#%d) }}' % (
+    donorm('UDP Stats: { Processed: %d, Matched: %d { Shortest: %dB (#%d), Longest: %dB (#%d) }}' % (
                 configopts['inspudppacketct'],
                 configopts['udpmatches'],
                 configopts['shortestmatch']['packet'],
@@ -53,7 +53,7 @@ def dumpmatchstats():
                 configopts['longestmatch']['packet'],
                 configopts['longestmatch']['packetid']))
 
-    doinfo('TCP Stats: { Processed: %d, Matched: %d { Shortest: %dB (#%d), Longest: %dB (#%d) }}' % (
+    donorm('TCP Stats: { Processed: %d, Matched: %d { Shortest: %dB (#%d), Longest: %dB (#%d) }}' % (
                 configopts['insptcpstreamct'],
                 configopts['tcpmatches'],
                 configopts['shortestmatch']['stream'],
