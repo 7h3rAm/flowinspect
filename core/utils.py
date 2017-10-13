@@ -165,6 +165,7 @@ def pcapwriter(filename, pktlist):
         fo.write(pkt_header)
         fo.write(eth_header)
         fo.write(pkt)
+    fo.close()
 
 
 # write some data to a file
